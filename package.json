@@ -4,7 +4,7 @@
   "description": "Um roteador simples para trabalhadores cloudflare. Suporta middlewares e injeta por padrão alguns dados transformados ao objeto Request.",
   "repository": {
     "type": "git",
-    "url": ""
+    "url": "https://github.com/HelenoSalgado/routerworkers.git"
   },
   "engines": {
     "node": ">=18"
