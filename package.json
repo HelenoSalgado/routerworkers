@@ -1,0 +1,30 @@
+{
+  "name": "routerworkers",
+  "version": "1.0.0",
+  "description": "Um roteador simples para trabalhadores cloudflare. Suporta middlewares e injeta por padrão alguns dados transformados ao objeto Request.",
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "rollup --config rollup.config.ts --configPlugin @rollup/plugin-typescript",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "cloudflare",
+    "workers",
+    "router"
+  ],
+  "author": "Heleno Salgado",
+  "license": "MIT",
+  "devDependencies": {
+    "@rollup/plugin-typescript": "^11.1.6",
+    "rollup": "^4.19.1",
+    "tslib": "^2.6.3",
+    "typescript": "^5.5.4"
+  }
+}
