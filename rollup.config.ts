@@ -1,17 +1,15 @@
-// rollup.config.js
 import typescript from '@rollup/plugin-typescript';
-import ts, { ParsedTsconfig, TsConfigSourceFile } from 'typescript';
+//import { RollupOptions } from 'rollup';
 
 export default {
-    input: './src/index.ts',
+    input: "./src/index.ts",
     output: {
+        //externalImportAttributes: true,
         dir: './dist',
-        format: 'cjs'
+        esModule: true,
+        interop: 'esModule',
+        format: 'es',
+        strict: true
     },
-    plugins: [typescript({
-        compilerOptions: {
-            "target": "esnext",
-            "emitDeclarationOnly": true
-        }
-    })]
+    plugins: [typescript()]
 };
