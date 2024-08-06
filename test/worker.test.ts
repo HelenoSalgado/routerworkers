@@ -1,5 +1,5 @@
 import { RouterWorkers } from "../src/index";
-import { Req, Res } from '../dist/types/index'
+import { Req, Res } from '../dist/index'
 
 export default {
 
@@ -8,9 +8,11 @@ export default {
     const app = new RouterWorkers(request);
 
     await app.get('/posts/:slug', async(req: Req, res: Res) => {
-      res.send({project: 'Router to Workers'}, {
-        status: 200
-      });
+      res.send({project: 'Router to Workers'});
+    });
+
+    await app.get('/posts', async(req: Req, res: Res) => {
+      res.send(req.queries);
     });
 
     return app.resolve();

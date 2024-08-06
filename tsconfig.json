@@ -8,7 +8,6 @@
          "esModuleInterop": true,
          "allowJs": true,
          "module": "es2022",
-         "baseUrl": "./src",
          "outDir": "./dist",
          "declaration": true,
          "declarationDir": "./dist",

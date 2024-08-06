@@ -1,20 +1,20 @@
 {
   "name": "routerworkers",
-  "version": "0.0.6",
+  "version": "0.0.8",
   "description": "Um roteador simples para trabalhadores cloudflare. Suporta middlewares, cache e injeta por padrão alguns dados transformados ao objeto Request.",
   "repository": {
     "type": "git",
     "url": "https://github.com/HelenoSalgado/routerworkers.git"
   },
   "engines": {
-    "node": ">=18"
+    "node": "^18.0.0 || >=20.0.0"
   },
   "type": "module",
   "main": "dist/index.js",
-  "types": "dist/src/index.d.ts",
+  "types": "dist/index.d.ts",
   "scripts": {
     "build": "rollup --config rollup.config.ts --configPlugin @rollup/plugin-typescript && npm run minify && npm run test",
-    "minify": "bash minify -i dist/index.js",
+    "minify": "bash minify -i dist/index.js && bash orderDist.sh",
     "test": "jest",
     "clean": "rm -rf ./dist && mkdir dist"
   },

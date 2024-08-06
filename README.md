@@ -1,6 +1,6 @@
 # Router Workers
 
-Um roteador simples para Cloudflare Workers. Suporta middlewares, cache e injeta por padrão alguns dados transformados ao objeto Request.
+Um roteador simples para Cloudflare Workers. Suporta middlewares, cache e injeta alguns dados transformados ao objeto Request.
 
 ## Como usar
 
@@ -26,7 +26,7 @@ return app.resolve();
 ```
 **Obs:** `await` é necessário para que o roteador espere pela resposta da rota alvo, caso contrário ele retornaria uma resposta não resolvida.
 
-Opcionalmente você também poderia passar um objeto de status na resposta, como:
+Opcionalmente você também poderia passar um objeto de status na resposta, como em:
 
 ```
 res.send('Nenhum comentário encontrado', {
@@ -37,7 +37,7 @@ res.send('Nenhum comentário encontrado', {
 
 * Há dois formatos de resposta possíveis: `text/plain` e `application/json`. Logo, qualquer outro formato irá incorrer em erro.
 
-## Middlewares
+## Middleware Geral
 
 Se você tem um middleware geral ou parcial, poderá usá-lo sempre antes das rotas alvos, com `app.use()`.
 
@@ -47,7 +47,7 @@ app.use(allowOrigin);
 A função de middleware receberá um objeto **req** e **res**:
 
 ```
-export async function allowOrigin(req, res){
+export async function allowOrigin(req: Req, res: Res){
     if(req.headers.get('origin') != 'domain.com'){
         res.send('Origem não permitida', { status: 403 });
     }
@@ -58,7 +58,7 @@ export async function allowOrigin(req, res){
 
 **Obs:** Toda vez que um middleware invocar `res.send()` ou `res.redirect()` a solicitação será resolvida imeditamente e retornará a resposta. Não fazer nada ou simplesmente retornar, fará com que a próxima função da pilha seja executada.
 
-### Mais um exemplo de uso
+## Middleware de rota
 
 ```
 await app.delete('/comments/:id', middlewareAuth, async(req: Req, res: Res) => {
@@ -66,7 +66,7 @@ await app.delete('/comments/:id', middlewareAuth, async(req: Req, res: Res) => {
     res.send('', { status: 204 });
 });
 ```
-Por padrão o objeto Request do worker é imutável, então o router workers instancia um novo e extende-o com três novas propriedades:
+Por padrão o objeto Request do worker é imutável, então o *Router Workers* instancia um Request mutável, assim é perfeitamente possível customizar *alterar e injetar novas propriedades* ao `req` objeto em seus middlewares. Existem pelo menos três propriedades predefinidas:
 
 * param;
 * queries;
@@ -74,11 +74,11 @@ Por padrão o objeto Request do worker é imutável, então o router workers ins
 
 Dessa forma é possível acessar `req.param.id` como na rota acima.
 
-As duas primeiras só estão disponíveis para o verbo `GET`, e a última recebe o valor da promessa resolvida de `await request.json()` padrão do objeto Request para solicitações `PUT` e `POST`.
+A primeira propriedade está disponível para todos os métodos http, já a queries somente para o verbo `GET`, e a última recebe o valor da promessa resolvida de `await request.json()` do objeto Request para solicitações `PUT` e `POST`.
 
 ## Cache API
 
-O Router Workers aproveita a API de cache do Cloudfare Workers e armazena em cache todas as respostas de rotas que forem incluídas no array de `pathname` na inicialização do roteamento. A propriedade `maxage` deve receber uma string contendo o tempo em segundos que o cache ficrá ativo:
+O Router Workers aproveita a API de cache do Cloudfare Workers e armazena em cache todas as respostas de rotas que forem incluídas no array de `pathname` na inicialização do roteador. A propriedade `maxage` deve receber uma string contendo o tempo em segundos que o cache ficará ativo:
 
 ```
 const app = RouterWorkers(Request, {
@@ -89,9 +89,14 @@ const app = RouterWorkers(Request, {
 });
 ```
 * A chave para armazenar, buscar ou deletar o cache é sempre a URL (caminho completo) da solicitação.
-* O cache só responde a solicitações do tipo `GET` e sempre que um recurso for criado ou modificado, o cache correspondente ao `pathname` será eliminado.
+* O cache só responde à solicitações do tipo `GET` e sempre que um recurso for criado ou modificado, o cache correspondente ao `pathname` será eliminado.
 
 ## Limitações
+
+* Todos os dados resgatados da URL (parâmetro e queries) são do tipo String;
+* Não existe suporte para rotas aninhadas, ex: `/user/profile/:id`;
+* CORS mecânismo não está presente.
+
 O `routerworkers` não consegue fazer nada além do que aqui foi descrito. Talvez melhore com o tempo. Visite o repositório no github e ajude no que puder. Obrigado. 
 
 
