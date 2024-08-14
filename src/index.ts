@@ -1,10 +1,12 @@
 import { Args, Caches, ConfigWorker, Req, Res } from "../types/index";
+import { getQueryInPathName } from "./utils/getQueries";
 
 declare const caches: Caches;
 
 export class RouterWorkers {
     private method: string;
     private url: URL;
+    private incrementRoute = [];
     private config: ConfigWorker;
     private resolved: boolean = false;
     public req: Req;
@@ -42,15 +44,27 @@ export class RouterWorkers {
 
     async get(...args: Args) {
         if (!this.resolved && this.method == 'GET' && this.isPathName(args[0])) {
-            this.req['queries'] = this.getQueryInPathName();
+            this.req['queries'] = getQueryInPathName(this.url.search);
             await this.foreachMiddleware(args);
             if(this.resolved) return;
             let cbResult = args[args.length-1] as Function;
-            if(this.config?.cache?.pathname.length > 0 && this.config?.cache?.pathname.includes(args[0])){
-                await this.setCache(cbResult);
-                return; 
-            }
-            return cbResult(this.req, this.res);
+            let isPathNameInCache: boolean = false;
+     
+            for (let pathname of this.config?.cache?.pathname || []){
+                if (pathname.includes(',') && pathname.split(',')[0] == args[0]) {
+                    let pathNameAndTime = pathname.split(',');
+                    isPathNameInCache = pathNameAndTime[0] == args[0] ? true : false;
+                    this.config.cache.maxage = pathNameAndTime[1];
+                    break;
+                }else if(pathname == args[0]){
+                    isPathNameInCache = true;
+                    break;
+                }
+            };
+            return isPathNameInCache ? await this.setCache(cbResult) : cbResult(this.req, this.res);  
+            
+        }else{
+            this.incrementRoute.push(args[0]);
         }
     }
 
@@ -62,7 +76,7 @@ export class RouterWorkers {
             let cbResult = args[args.length-1] as Function;
             return cbResult(this.req, this.res);
         } else {
-            return
+            this.incrementRoute.push(args[0]);
         }
     }
 
@@ -75,7 +89,7 @@ export class RouterWorkers {
             let cbResult = args[args.length-1] as Function;
             return cbResult(this.req, this.res);
         } else {
-            return;
+            this.incrementRoute.push(args[0]);
         }
     }
 
@@ -87,12 +101,8 @@ export class RouterWorkers {
             let cbResult = args[args.length-1] as Function;
             return cbResult(this.req, this.res);
         } else {
-            return
+            this.incrementRoute.push(args[0]);
         }
-    }
-
-    resolve():Response{
-        return this.response as Response;
     }
 
     isPathName(path: string): boolean{
@@ -100,20 +110,11 @@ export class RouterWorkers {
         if(fullPath.length > 2 && path?.includes(':') && path.includes(fullPath[1])){
             let key = path.split(':')[1];
             this.req['param'] = {[key]: fullPath[2]};
-            if('/'+fullPath[1]+'/:'+key == path) return true
+            if('/'+fullPath[1]+'/:'+key == path) return true;
         }else if(this.url.pathname == path){ 
             return true;
-        }
-    }
-
-    getQueryInPathName(){
-        if (this.url.search.includes('?')) {
-            let preQueries = this.url.search.replaceAll('=', ':').replaceAll('&', ',').slice(1).toString().split(',');
-            let queries = {};
-            preQueries.forEach(query => { let q = query.split(':'); queries[q[0]] = q[1]; })
-            return queries;
         }else{
-            return undefined;
+            return false;
         }
     }
 
@@ -135,7 +136,7 @@ export class RouterWorkers {
             await cache.put(cacheKey, this.response.clone());
             return;
         }
-        return this.res.send(await response.json())
+        return this.res.send(await response.json());
     }
 
     async removeCache(pathname: string){
@@ -146,4 +147,18 @@ export class RouterWorkers {
         return;
     }
 
+    resolve():Response{
+        if(!this.response){
+            this.incrementRoute.forEach((pathname: string) => {
+                if(!this.isPathName(pathname)) return this.res.send('Not Found: '+ this.url.pathname);
+            });
+        }
+        return this.response as Response;
+    }
 }
+
+// Middlewares
+// export function expurgCache(req: Req, res: Res){
+//     let cacheKey = new Request(req.url, {method: 'GET'});
+//     caches.default.delete(cacheKey);
+// }

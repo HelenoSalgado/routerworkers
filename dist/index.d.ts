@@ -27,6 +27,7 @@ export interface Caches {
 export declare class RouterWorkers {
     private method;
     private url;
+    private incrementRoute;
     private config;
     private resolved;
     req: Req;
@@ -38,10 +39,9 @@ export declare class RouterWorkers {
     post(...args: Args): Promise<any>;
     put(...args: Args): Promise<any>;
     delete(...args: Args): Promise<any>;
-    resolve(): Response;
     isPathName(path: string): boolean;
-    getQueryInPathName(): {};
     foreachMiddleware(args: any[]): Promise<void>;
     setCache(callback: Function): Promise<void>;
     removeCache(pathname: string): Promise<void>;
+    resolve(): Response;
 }

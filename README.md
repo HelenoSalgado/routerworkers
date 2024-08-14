@@ -7,7 +7,7 @@ Um roteador simples para Cloudflare Workers. Suporta middlewares, cache e injeta
 Você deverá instanciar o objeto de roteamento passando para o construtor o objeto Request do seu worker e, opcionalmente, uma configuração para cache:
 
 ```
-const app = RouterWorkers(Request, {
+const app = new RouterWorkers(Request, {
     cache: {
         pathname: ['/comments'],
         maxage: '87000'
@@ -78,22 +78,44 @@ A primeira propriedade está disponível para todos os métodos http, já a quer
 
 ## Cache API
 
-O Router Workers aproveita a API de cache do Cloudfare Workers e armazena em cache todas as respostas de rotas que forem incluídas no array de `pathname` na inicialização do roteador. A propriedade `maxage` deve receber uma string contendo o tempo em segundos que o cache ficará ativo:
+O Router Workers aproveita a API de cache do Cloudfare Workers e armazena em cache todas as respostas de rotas que forem incluídas no array de `pathname` na inicialização do roteador. A propriedade `maxage` deve receber uma string contendo o tempo em segundos que o cache ficará ativo, este é o valor padrão para todas as rotas incluídas no array. Caso queira um tempo de cache diferente para uma rota específica, poderá incluir o valor ao final do pathname, depois de uma vírgula, como `'/comments,37000'`:
 
 ```
 const app = RouterWorkers(Request, {
     cache: {
-        pathname: ['/comments', '/likes/:slug'],
+        pathname: ['/comments,37000', '/likes/:slug'],
         maxage: '87000'
     }
 });
 ```
-* A chave para armazenar, buscar ou deletar o cache é sempre a URL (caminho completo) da solicitação.
+* A chave para armazenar, buscar ou deletar o cache é sempre a URL (caminho completo) da solicitação. 
 * O cache só responde à solicitações do tipo `GET` e sempre que um recurso for criado ou modificado, o cache correspondente ao `pathname` será eliminado.
 
+### Desabilitar Cache
+
+Talvez você queira evitar respostas em cache enquanto desenvolve suas funções workers, a solução é adicionar sua configuração de cache somente para produção. Você pode fazer isso no arquivo `wrangler.toml`:
+
+```
+[vars]
+CACHE = { pathname = ['/comments,37000', '/likes/:slug'], maxage = '87000' }
+```
+
+E então definir um valor indefinido para a variável `CACHE` no arquivo `.dev.vars`:
+
+```
+CACHE=undefined
+```
+Assim feito, basta chamar `env.CACHE` como valor na configuração de cache do Router Workers:
+
+```
+...
+
+cache: env.CACHE
+
+...
+```
 ## Limitações
 
-* Todos os dados resgatados da URL (parâmetro e queries) são do tipo String;
 * Não existe suporte para rotas aninhadas, ex: `/user/profile/:id`;
 * CORS mecânismo não está presente.
 

@@ -1,6 +1,6 @@
 {
   "name": "routerworkers",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "Um roteador simples para trabalhadores cloudflare. Suporta middlewares, cache e injeta por padrão alguns dados transformados ao objeto Request.",
   "repository": {
     "type": "git",
