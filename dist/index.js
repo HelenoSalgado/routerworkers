@@ -1,1 +1,838 @@
-/****************************************************************************** Copyright(c)Microsoft Corporation. Permission to use,copy,modify,and/or distribute this software for any purpose with or without fee is hereby granted. THE SOFTWARE IS PROVIDED "AS IS"AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL,DIRECT,INDIRECT,OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,DATA OR PROFITS,WHETHER IN AN ACTION OF CONTRACT,NEGLIGENCE OR OTHER TORTIOUS ACTION,ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. ***************************************************************************** */function __awaiter(thisArg,_arguments,P,generator){function adopt(value){return value instanceof P?value:new P(function(resolve){resolve(value);});}return new(P ||(P=Promise))(function(resolve,reject){function fulfilled(value){try{step(generator.next(value));}catch(e){reject(e);}}function rejected(value){try{step(generator["throw"](value));}catch(e){reject(e);}}function step(result){result.done?resolve(result.value):adopt(result.value).then(fulfilled,rejected);}step((generator=generator.apply(thisArg,_arguments || [])).next());});}function __generator(thisArg,body){var _={label:0,sent:function(){if(t[0] & 1)throw t[1];return t[1];},trys:[],ops:[]},f,y,t,g;return g={next:verb(0),"throw":verb(1),"return":verb(2)},typeof Symbol==="function"&&(g[Symbol.iterator]=function(){return this;}),g;function verb(n){return function(v){return step([n,v]);};}function step(op){if(f)throw new TypeError("Generator is already executing.");while(g&&(g=0,op[0]&&(_=0)),_)try{if(f=1,y&&(t=op[0] & 2?y["return"]:op[0]?y["throw"] ||((t=y["return"])&&t.call(y),0):y.next)&&!(t=t.call(y,op[1])).done)return t;if(y=0,t)op=[op[0] & 2,t.value];switch(op[0]){case 0:case 1:t=op;break;case 4:_.label++;return{value:op[1],done:false};case 5:_.label++;y=op[1];op=[0];continue;case 7:op=_.ops.pop();_.trys.pop();continue;default:if(!(t=_.trys,t=t.length>0&&t[t.length-1])&&(op[0]===6 || op[0]===2)){_=0;continue;}if(op[0]===3&&(!t ||(op[1]>t[0]&&op[1]<t[3]))){_.label=op[1];break;}if(op[0]===6&&_.label<t[1]){_.label=t[1];t=op;break;}if(t&&_.label<t[2]){_.label=t[2];_.ops.push(op);break;}if(t[2])_.ops.pop();_.trys.pop();continue;}op=body.call(thisArg,_);}catch(e){op=[6,e];y=0;}finally{f=t=0;}if(op[0] & 5)throw op[1];return{value:op[0]?op[1]:void 0,done:true};}}typeof SuppressedError==="function"?SuppressedError:function(error,suppressed,message){var e=new Error(message);return e.name="SuppressedError",e.error=error,e.suppressed=suppressed,e;};function getQueryInPathName(search){if(search.includes('?')){var preQueries=search.replaceAll('%5B','[').replaceAll('%5D',']').replaceAll('%20','').slice(1).toString().split('&');var queries_1={};preQueries.forEach(function(query){var q=query.split('=');function transformQueries(value){if(value=='true')return queries_1[q[0]]=true;if(value=='false')return queries_1[q[0]]=false;if(!Number.isNaN(Number.parseInt(value)))return parseInt(value);if(q[1].includes('[')&&q[1].includes(']')){var array=q[1].replace('[','').replace(']','').split(',');var arrayModify=array.map(function(value){if(value=='true')return true;if(value=='false')return false;if(!Number.isNaN(Number.parseInt(value)))return parseInt(value);if(typeof value=="string")return value.replaceAll('%27','').replaceAll('%22','');return value;});return arrayModify;}if(typeof value=="string")return value.replaceAll('%27','').replaceAll('%22','');return value;}queries_1[q[0]]=transformQueries(q[1]);});return queries_1;}else{return undefined;}}var RouterWorkers=/** @class */(function(){function RouterWorkers(request,config){var _this=this;this.incrementRoute=[];this.resolved=false;this.res={send:function(data,config){if(typeof data=="object"){_this.response=Response.json(data,config);}else{_this.response=new Response(data,config);}_this.resolved=true;},redirect:function(url,status){_this.response=Response.redirect(url,status);_this.resolved=true;}};this.url=new URL(request.url);this.method=request.method;this.config=config;this.req=new Request(request);}RouterWorkers.prototype.use=function(){var args=[];for(var _i=0;_i<arguments.length;_i++){args[_i]=arguments[_i];}return __awaiter(this,void 0,void 0,function(){var i,middleware;return __generator(this,function(_a){switch(_a.label){case 0:i=0;_a.label=1;case 1:if(!(i<args.length))return [3/*break*/,4];middleware=args[i];if(this.resolved)return [2/*return*/];return [4/*yield*/,middleware(this.req,this.res)];case 2:_a.sent();_a.label=3;case 3:i++;return [3/*break*/,1];case 4:return [2/*return*/];}});});};RouterWorkers.prototype.get=function(){var args=[];for(var _i=0;_i<arguments.length;_i++){args[_i]=arguments[_i];}return __awaiter(this,void 0,void 0,function(){var cbResult,isPathNameInCache,_a,_b,pathname,pathNameAndTime,_c;var _d,_e;return __generator(this,function(_f){switch(_f.label){case 0:if(!(!this.resolved&&this.method=='GET'&&this.isPathName(args[0])))return [3/*break*/,5];this.req['queries']=getQueryInPathName(this.url.search);return [4/*yield*/,this.foreachMiddleware(args)];case 1:_f.sent();if(this.resolved)return [2/*return*/];cbResult=args[args.length-1];isPathNameInCache=false;for(_a=0,_b=((_e=(_d=this.config)===null || _d===void 0?void 0:_d.cache)===null || _e===void 0?void 0:_e.pathname)|| [];_a<_b.length;_a++){pathname=_b[_a];if(pathname.includes(',')&&pathname.split(',')[0]==args[0]){pathNameAndTime=pathname.split(',');isPathNameInCache=pathNameAndTime[0]==args[0]?true:false;this.config.cache.maxage=pathNameAndTime[1];break;}else if(pathname==args[0]){isPathNameInCache=true;break;}}if(!isPathNameInCache)return [3/*break*/,3];return [4/*yield*/,this.setCache(cbResult)];case 2:_c=_f.sent();return [3/*break*/,4];case 3:_c=cbResult(this.req,this.res);_f.label=4;case 4:return [2/*return*/,_c];case 5:this.incrementRoute.push(args[0]);_f.label=6;case 6:return [2/*return*/];}});});};RouterWorkers.prototype.post=function(){var args=[];for(var _i=0;_i<arguments.length;_i++){args[_i]=arguments[_i];}return __awaiter(this,void 0,void 0,function(){var _a,cbResult;return __generator(this,function(_b){switch(_b.label){case 0:if(!(!this.resolved&&this.method=='POST'&&this.isPathName(args[0])))return [3/*break*/,3];_a=this.req;return [4/*yield*/,this.req.json()];case 1:_a.bodyJson=_b.sent();return [4/*yield*/,this.foreachMiddleware(args)];case 2:_b.sent();if(this.resolved)return [2/*return*/];cbResult=args[args.length-1];return [2/*return*/,cbResult(this.req,this.res)];case 3:this.incrementRoute.push(args[0]);_b.label=4;case 4:return [2/*return*/];}});});};RouterWorkers.prototype.put=function(){var args=[];for(var _i=0;_i<arguments.length;_i++){args[_i]=arguments[_i];}return __awaiter(this,void 0,void 0,function(){var _a,cbResult;return __generator(this,function(_b){switch(_b.label){case 0:if(!(!this.resolved&&this.method=='PUT'&&this.isPathName(args[0])))return [3/*break*/,4];_a=this.req;return [4/*yield*/,this.req.json().catch(function(e){return e.message;})];case 1:_a.bodyJson=_b.sent();return [4/*yield*/,this.foreachMiddleware(args)];case 2:_b.sent();if(this.resolved)return [2/*return*/];return [4/*yield*/,this.removeCache(args[0])];case 3:_b.sent();cbResult=args[args.length-1];return [2/*return*/,cbResult(this.req,this.res)];case 4:this.incrementRoute.push(args[0]);_b.label=5;case 5:return [2/*return*/];}});});};RouterWorkers.prototype.delete=function(){var args=[];for(var _i=0;_i<arguments.length;_i++){args[_i]=arguments[_i];}return __awaiter(this,void 0,void 0,function(){var cbResult;return __generator(this,function(_a){switch(_a.label){case 0:if(!(!this.resolved&&this.method=='DELETE'&&this.isPathName(args[0])))return [3/*break*/,3];return [4/*yield*/,this.foreachMiddleware(args)];case 1:_a.sent();if(this.resolved)return [2/*return*/];return [4/*yield*/,this.removeCache(args[0])];case 2:_a.sent();cbResult=args[args.length-1];return [2/*return*/,cbResult(this.req,this.res)];case 3:this.incrementRoute.push(args[0]);_a.label=4;case 4:return [2/*return*/];}});});};RouterWorkers.prototype.isPathName=function(path){var _a;var fullPath=this.url.pathname.split('/');if(fullPath.length>2&&(path===null || path===void 0?void 0:path.includes(':'))&&path.includes(fullPath[1])){var key=path.split(':')[1];this.req['param']=(_a={},_a[key]=fullPath[2],_a);if('/'+fullPath[1]+'/:'+key==path)return true;}else if(this.url.pathname==path){return true;}else{return false;}};RouterWorkers.prototype.foreachMiddleware=function(args){return __awaiter(this,void 0,void 0,function(){var i,middleware;return __generator(this,function(_a){switch(_a.label){case 0:i=1;_a.label=1;case 1:if(!(i<args.length-1))return [3/*break*/,4];middleware=args[i];return [4/*yield*/,middleware(this.req,this.res)];case 2:_a.sent();_a.label=3;case 3:i++;return [3/*break*/,1];case 4:return [2/*return*/];}});});};RouterWorkers.prototype.setCache=function(callback){return __awaiter(this,void 0,void 0,function(){var cache,cacheKey,response,_a,_b;return __generator(this,function(_c){switch(_c.label){case 0:cache=caches.default;cacheKey=new Request(this.req.url,{method:'GET'});return [4/*yield*/,cache.match(cacheKey)];case 1:response=_c.sent();if(!!response)return [3/*break*/,4];return [4/*yield*/,callback(this.req,this.res)];case 2:_c.sent();this.response.headers.append('Cache-Control','s-maxage='+this.config.cache.maxage);return [4/*yield*/,cache.put(cacheKey,this.response.clone())];case 3:_c.sent();return [2/*return*/];case 4:_b=(_a=this.res).send;return [4/*yield*/,response.json()];case 5:return [2/*return*/,_b.apply(_a,[_c.sent()])];}});});};RouterWorkers.prototype.removeCache=function(pathname){return __awaiter(this,void 0,void 0,function(){var cacheKey;var _a,_b,_c,_d;return __generator(this,function(_e){switch(_e.label){case 0:if(!(((_b=(_a=this.config)===null || _a===void 0?void 0:_a.cache)===null || _b===void 0?void 0:_b.pathname.length)>0&&((_d=(_c=this.config)===null || _c===void 0?void 0:_c.cache)===null || _d===void 0?void 0:_d.pathname.includes(pathname))))return [3/*break*/,2];cacheKey=new Request(this.req.url,{method:'GET'});return [4/*yield*/,caches.default.delete(cacheKey)];case 1:_e.sent();_e.label=2;case 2:return [2/*return*/];}});});};RouterWorkers.prototype.resolve=function(){var _this=this;if(!this.response){this.incrementRoute.forEach(function(pathname){if(!_this.isPathName(pathname))return _this.res.send('Not Found:'+_this.url.pathname);});}return this.response;};return RouterWorkers;}());export{RouterWorkers};
+function getQueryInPathName(search) {
+    if (search.includes('?')) {
+        let preQueries = search.replaceAll('%5B', '[').replaceAll('%5D', ']').replaceAll('%20', ' ').slice(1).toString().split('&');
+        let queries = {};
+        preQueries.forEach((query) => {
+            let q = query.split('=');
+            function transformQueries(value) {
+                if (value == 'true')
+                    return queries[q[0]] = true;
+                if (value == 'false')
+                    return queries[q[0]] = false;
+                if (!Number.isNaN(Number.parseInt(value)))
+                    return parseInt(value);
+                if (q[1].includes('[') && q[1].includes(']')) {
+                    let array = q[1].replace('[', '').replace(']', '').split(',');
+                    let arrayModify = array.map((value) => {
+                        if (value == 'true')
+                            return true;
+                        if (value == 'false')
+                            return false;
+                        if (!Number.isNaN(Number.parseInt(value)))
+                            return parseInt(value);
+                        if (typeof value == "string")
+                            return value.replaceAll('%27', '').replaceAll('%22', '');
+                        return value;
+                    });
+                    return arrayModify;
+                }
+                if (typeof value == "string")
+                    return value.replaceAll('%27', '').replaceAll('%22', '');
+                return value;
+            }
+            queries[q[0]] = transformQueries(q[1]);
+        });
+        return queries;
+    }
+    else {
+        return undefined;
+    }
+}
+
+/**
+ * RouteParser - Parser simples e eficiente para rotas aninhadas
+ * Converte rotas com parâmetros em regex para matching
+ */
+class RouteParser {
+    pattern;
+    paramNames = [];
+    constructor(route) {
+        // Extrai nomes dos parâmetros e cria pattern regex
+        const regexPattern = route
+            .replace(/\//g, '\\/') // Escapa barras
+            .replace(/:(\w+)/g, (_, paramName) => {
+            this.paramNames.push(paramName);
+            return '([^\\/]+)'; // Captura qualquer coisa exceto /
+        });
+        this.pattern = new RegExp(`^${regexPattern}$`);
+    }
+    /**
+     * Verifica se o pathname corresponde à rota e extrai parâmetros
+     */
+    match(pathname) {
+        const matches = pathname.match(this.pattern);
+        if (!matches) {
+            return { matched: false, params: {} };
+        }
+        // Mapeia valores capturados para nomes dos parâmetros
+        const params = {};
+        this.paramNames.forEach((name, index) => {
+            params[name] = decodeURIComponent(matches[index + 1]);
+        });
+        return { matched: true, params };
+    }
+}
+
+/**
+ * Validador Built-in do RouterWorkers
+ * Zero dependências, simples e poderoso
+ */
+/**
+ * Erro de validação
+ */
+class ValidationError extends Error {
+    field;
+    code;
+    constructor(field, message, code) {
+        super(message);
+        this.field = field;
+        this.code = code;
+        this.name = 'ValidationError';
+    }
+}
+/**
+ * Valida um valor contra uma regra
+ */
+function validateValue(value, rule, fieldName) {
+    // Required check
+    if (rule.required && (value === undefined || value === null || value === '')) {
+        return new ValidationError(fieldName, rule.message || `${fieldName} is required`, 'required');
+    }
+    // Se não é required e está vazio, skip outras validações
+    if (value === undefined || value === null) {
+        return null;
+    }
+    // Type validation
+    if (rule.type) {
+        switch (rule.type) {
+            case 'string':
+                if (typeof value !== 'string') {
+                    return new ValidationError(fieldName, rule.message || `${fieldName} must be a string`, 'invalid_type');
+                }
+                break;
+            case 'number':
+                const num = typeof value === 'string' ? parseFloat(value) : value;
+                if (typeof num !== 'number' || isNaN(num)) {
+                    return new ValidationError(fieldName, rule.message || `${fieldName} must be a number`, 'invalid_type');
+                }
+                value = num; // Coerce para number
+                break;
+            case 'boolean':
+                if (typeof value !== 'boolean') {
+                    // Aceita 'true'/'false' strings
+                    if (value === 'true' || value === 'false') {
+                        value = value === 'true';
+                    }
+                    else {
+                        return new ValidationError(fieldName, rule.message || `${fieldName} must be a boolean`, 'invalid_type');
+                    }
+                }
+                break;
+            case 'email':
+                if (typeof value !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+                    return new ValidationError(fieldName, rule.message || `${fieldName} must be a valid email`, 'invalid_email');
+                }
+                break;
+            case 'url':
+                if (typeof value !== 'string') {
+                    return new ValidationError(fieldName, rule.message || `${fieldName} must be a string`, 'invalid_type');
+                }
+                try {
+                    new URL(value);
+                }
+                catch {
+                    return new ValidationError(fieldName, rule.message || `${fieldName} must be a valid URL`, 'invalid_url');
+                }
+                break;
+            case 'uuid':
+                if (typeof value !== 'string' ||
+                    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)) {
+                    return new ValidationError(fieldName, rule.message || `${fieldName} must be a valid UUID`, 'invalid_uuid');
+                }
+                break;
+            case 'array':
+                if (!Array.isArray(value)) {
+                    return new ValidationError(fieldName, rule.message || `${fieldName} must be an array`, 'invalid_type');
+                }
+                break;
+            case 'object':
+                if (typeof value !== 'object' || Array.isArray(value) || value === null) {
+                    return new ValidationError(fieldName, rule.message || `${fieldName} must be an object`, 'invalid_type');
+                }
+                break;
+        }
+    }
+    // Min/Max para números
+    if (typeof value === 'number') {
+        if (rule.min !== undefined && value < rule.min) {
+            return new ValidationError(fieldName, rule.message || `${fieldName} must be at least ${rule.min}`, 'too_small');
+        }
+        if (rule.max !== undefined && value > rule.max) {
+            return new ValidationError(fieldName, rule.message || `${fieldName} must be at most ${rule.max}`, 'too_large');
+        }
+    }
+    // MinLength/MaxLength para strings e arrays
+    if (typeof value === 'string' || Array.isArray(value)) {
+        if (rule.minLength !== undefined && value.length < rule.minLength) {
+            return new ValidationError(fieldName, rule.message || `${fieldName} must have at least ${rule.minLength} characters`, 'too_short');
+        }
+        if (rule.maxLength !== undefined && value.length > rule.maxLength) {
+            return new ValidationError(fieldName, rule.message || `${fieldName} must have at most ${rule.maxLength} characters`, 'too_long');
+        }
+    }
+    // Pattern para strings
+    if (typeof value === 'string' && rule.pattern) {
+        if (!rule.pattern.test(value)) {
+            return new ValidationError(fieldName, rule.message || `${fieldName} does not match required pattern`, 'invalid_pattern');
+        }
+    }
+    // Enum check
+    if (rule.enum && !rule.enum.includes(value)) {
+        return new ValidationError(fieldName, rule.message || `${fieldName} must be one of: ${rule.enum.join(', ')}`, 'invalid_enum');
+    }
+    // Custom validator
+    if (rule.custom) {
+        const result = rule.custom(value);
+        if (result !== true) {
+            return new ValidationError(fieldName, typeof result === 'string' ? result : (rule.message || `${fieldName} failed custom validation`), 'custom_validation');
+        }
+    }
+    return null;
+}
+/**
+ * Valida um objeto contra um schema
+ */
+function validateObject(data, schema) {
+    const errors = [];
+    for (const [field, rule] of Object.entries(schema)) {
+        const value = data?.[field];
+        const error = validateValue(value, rule, field);
+        if (error) {
+            errors.push(error);
+        }
+    }
+    return errors;
+}
+/**
+ * Cria middleware de validação
+ *
+ * @example
+ * ```typescript
+ * import { validate } from 'routerworkers';
+ *
+ * app.post('/users', validate({
+ *   body: {
+ *     name: { type: 'string', required: true, minLength: 3 },
+ *     email: { type: 'email', required: true },
+ *     age: { type: 'number', min: 18, max: 120 }
+ *   }
+ * }), handler);
+ * ```
+ */
+function validate(config) {
+    return async (req, res) => {
+        const allErrors = [];
+        // Valida body
+        if (config.body && req.bodyJson) {
+            const errors = validateObject(req.bodyJson, config.body);
+            allErrors.push(...errors);
+        }
+        // Valida params
+        if (config.params && req.params) {
+            const errors = validateObject(req.params, config.params);
+            allErrors.push(...errors);
+        }
+        // Valida queries
+        if (config.queries && req.queries) {
+            const errors = validateObject(req.queries, config.queries);
+            allErrors.push(...errors);
+        }
+        // Se há erros, chama handler customizado ou padrão
+        if (allErrors.length > 0) {
+            if (config.onError) {
+                config.onError(allErrors, req, res);
+            }
+            else {
+                // Handler padrão: retorna erros estruturados
+                res.send({
+                    error: 'Validation failed',
+                    issues: allErrors.map(err => ({
+                        field: err.field,
+                        message: err.message,
+                        code: err.code
+                    }))
+                }, { status: 400 });
+            }
+        }
+    };
+}
+/**
+ * Schemas pré-definidos úteis
+ */
+const schemas = {
+    /**
+     * Schema para UUID
+     */
+    uuid: { type: 'uuid', required: true },
+    /**
+     * Schema para email
+     */
+    email: { type: 'email', required: true },
+    /**
+     * Schema para URL
+     */
+    url: { type: 'url', required: true },
+    /**
+     * Schema para paginação
+     */
+    pagination: {
+        page: { type: 'number', min: 1 },
+        limit: { type: 'number', min: 1, max: 100 }
+    }
+};
+
+/**
+ * CORS Middleware para RouterWorkers
+ * Configuração flexível e compatível com Cloudflare Workers
+ */
+/**
+ * Cria middleware CORS
+ *
+ * @example
+ * ```typescript
+ * import { cors } from 'routerworkers';
+ *
+ * // CORS simples (permite tudo)
+ * await app.use(cors());
+ *
+ * // CORS configurado
+ * await app.use(cors({
+ *   origin: 'https://example.com',
+ *   credentials: true
+ * }));
+ * ```
+ */
+function cors(options = {}) {
+    const { origin = '*', methods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'], allowedHeaders = ['Content-Type', 'Authorization'], exposedHeaders = [], credentials = false, maxAge = 86400 } = options;
+    return async (req, res) => {
+        const requestOrigin = req.headers.get('Origin') || '';
+        // Determinar se a origin é permitida
+        let allowOrigin = '*';
+        if (typeof origin === 'string') {
+            allowOrigin = origin;
+        }
+        else if (Array.isArray(origin)) {
+            if (origin.includes(requestOrigin)) {
+                allowOrigin = requestOrigin;
+            }
+        }
+        else if (typeof origin === 'function') {
+            if (origin(requestOrigin)) {
+                allowOrigin = requestOrigin;
+            }
+        }
+        // Se a requisição é OPTIONS (preflight), responder diretamente
+        if (req.method === 'OPTIONS') {
+            // Responder ao preflight com 204 No Content
+            res.noContent();
+            return;
+        }
+        // Para outras requisições, adicionar headers CORS à resposta
+        // Guardamos as configs para aplicar depois quando a response for criada
+        req.__corsHeaders = {
+            'Access-Control-Allow-Origin': allowOrigin,
+            ...(credentials ? { 'Access-Control-Allow-Credentials': 'true' } : {}),
+            ...(exposedHeaders.length > 0 ? { 'Access-Control-Expose-Headers': exposedHeaders.join(', ') } : {})
+        };
+    };
+}
+/**
+ * CORS preset para desenvolvimento (permite tudo)
+ */
+function corsDevMode() {
+    return cors({
+        origin: '*',
+        credentials: false,
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD']
+    });
+}
+/**
+ * CORS preset para produção (restritivo)
+ */
+function corsProduction(allowedOrigins) {
+    return cors({
+        origin: allowedOrigins,
+        credentials: true,
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+        allowedHeaders: ['Content-Type', 'Authorization'],
+        maxAge: 86400
+    });
+}
+
+/**
+ * Route Groups para RouterWorkers
+ * Permite agrupar rotas com prefixos e middlewares compartilhados
+ */
+/**
+ * Classe para gerenciar grupos de rotas
+ */
+class RouteGroup {
+    app;
+    config;
+    constructor(app, config = {}) {
+        this.app = app;
+        this.config = config;
+    }
+    /**
+     * Prefixo completo considerando grupos aninhados
+     */
+    getFullPrefix() {
+        return this.config.prefix || '';
+    }
+    /**
+     * Combina middlewares do grupo com middlewares da rota
+     */
+    combineMiddlewares(routeMiddlewares) {
+        const groupMiddlewares = this.config.middlewares || [];
+        return [...groupMiddlewares, ...routeMiddlewares];
+    }
+    /**
+     * Adiciona prefixo ao path
+     */
+    prefixPath(path) {
+        const prefix = this.getFullPrefix();
+        if (!prefix)
+            return path;
+        // Remove trailing slash do prefix e leading slash do path
+        const cleanPrefix = prefix.replace(/\/$/, '');
+        const cleanPath = path.startsWith('/') ? path : `/${path}`;
+        return `${cleanPrefix}${cleanPath}`;
+    }
+    /**
+     * Registra rota GET no grupo
+     */
+    async get(path, ...args) {
+        const fullPath = this.prefixPath(path);
+        const handler = args[args.length - 1];
+        const routeMiddlewares = args.slice(0, -1);
+        const allMiddlewares = this.combineMiddlewares(routeMiddlewares);
+        await this.app.get(fullPath, ...allMiddlewares, handler);
+    }
+    /**
+     * Registra rota POST no grupo
+     */
+    async post(path, ...args) {
+        const fullPath = this.prefixPath(path);
+        const handler = args[args.length - 1];
+        const routeMiddlewares = args.slice(0, -1);
+        const allMiddlewares = this.combineMiddlewares(routeMiddlewares);
+        await this.app.post(fullPath, ...allMiddlewares, handler);
+    }
+    /**
+     * Registra rota PUT no grupo
+     */
+    async put(path, ...args) {
+        const fullPath = this.prefixPath(path);
+        const handler = args[args.length - 1];
+        const routeMiddlewares = args.slice(0, -1);
+        const allMiddlewares = this.combineMiddlewares(routeMiddlewares);
+        await this.app.put(fullPath, ...allMiddlewares, handler);
+    }
+    /**
+     * Registra rota DELETE no grupo
+     */
+    async delete(path, ...args) {
+        const fullPath = this.prefixPath(path);
+        const handler = args[args.length - 1];
+        const routeMiddlewares = args.slice(0, -1);
+        const allMiddlewares = this.combineMiddlewares(routeMiddlewares);
+        await this.app.delete(fullPath, ...allMiddlewares, handler);
+    }
+    /**
+     * Cria um subgrupo aninhado
+     */
+    group(config, callback) {
+        const nestedPrefix = this.getFullPrefix() + (config.prefix || '');
+        const nestedMiddlewares = [
+            ...(this.config.middlewares || []),
+            ...(config.middlewares || [])
+        ];
+        const nestedGroup = new RouteGroup(this.app, {
+            prefix: nestedPrefix,
+            middlewares: nestedMiddlewares
+        });
+        return callback(nestedGroup);
+    }
+}
+/**
+ * Cria um grupo de rotas
+ *
+ * @example
+ * ```typescript
+ * import { group } from 'routerworkers';
+ *
+ * await group(app, { prefix: '/api' }, async (api) => {
+ *   await api.get('/users', handler);
+ *   // Rota: GET /api/users
+ * });
+ * ```
+ */
+async function group(app, config, callback) {
+    const routeGroup = new RouteGroup(app, config);
+    await callback(routeGroup);
+}
+
+class RouterWorkers {
+    method;
+    url;
+    incrementRoute = [];
+    config;
+    resolved = false;
+    routeParsers = new Map(); // Cache de parsers
+    errorHandler;
+    notFoundHandler;
+    req;
+    response; // Será inicializado no res.send ou res.redirect
+    res = {
+        send: (data, config) => {
+            if (typeof data == "object") {
+                this.response = Response.json(data, config);
+            }
+            else {
+                this.response = new Response(data, config);
+            }
+            this.resolved = true;
+        },
+        redirect: (url, status) => {
+            this.response = Response.redirect(url, status);
+            this.resolved = true;
+        },
+        // ✨ Response Helpers - Fase 3
+        ok: (data) => {
+            this.response = Response.json(data, { status: 200 });
+            this.resolved = true;
+        },
+        created: (data, location) => {
+            const headers = location ? { Location: location } : undefined;
+            this.response = Response.json(data, { status: 201, headers });
+            this.resolved = true;
+        },
+        accepted: (data) => {
+            this.response = Response.json(data || { message: 'Accepted' }, { status: 202 });
+            this.resolved = true;
+        },
+        noContent: () => {
+            this.response = new Response(null, { status: 204 });
+            this.resolved = true;
+        },
+        badRequest: (error) => {
+            const body = typeof error === 'string' ? { error } : error;
+            this.response = Response.json(body, { status: 400 });
+            this.resolved = true;
+        },
+        unauthorized: (error) => {
+            this.response = Response.json({
+                error: error || 'Unauthorized'
+            }, { status: 401 });
+            this.resolved = true;
+        },
+        forbidden: (error) => {
+            this.response = Response.json({
+                error: error || 'Forbidden'
+            }, { status: 403 });
+            this.resolved = true;
+        },
+        notFound: (error) => {
+            this.response = Response.json({
+                error: error || 'Not Found'
+            }, { status: 404 });
+            this.resolved = true;
+        },
+        conflict: (error) => {
+            const body = typeof error === 'string' ? { error } : error;
+            this.response = Response.json(body, { status: 409 });
+            this.resolved = true;
+        },
+        unprocessable: (errors) => {
+            this.response = Response.json({
+                error: 'Validation failed',
+                issues: errors
+            }, { status: 422 });
+            this.resolved = true;
+        },
+        serverError: (error) => {
+            this.response = Response.json({
+                error: error || 'Internal Server Error'
+            }, { status: 500 });
+            this.resolved = true;
+        },
+        json: (data, status = 200) => {
+            this.response = Response.json(data, { status });
+            this.resolved = true;
+        },
+        html: (content, status = 200) => {
+            this.response = new Response(content, {
+                status,
+                headers: { 'Content-Type': 'text/html; charset=utf-8' }
+            });
+            this.resolved = true;
+        },
+        text: (content, status = 200) => {
+            this.response = new Response(content, {
+                status,
+                headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+            });
+            this.resolved = true;
+        }
+    };
+    constructor(request, config) {
+        this.url = new URL(request.url);
+        this.method = request.method;
+        this.config = config;
+        this.req = new Request(request);
+    }
+    /**
+     * Registra handler de erro global
+     * Chamado automaticamente quando ocorre um erro não tratado
+     */
+    onError(handler) {
+        this.errorHandler = handler;
+    }
+    /**
+     * Registra handler customizado para 404 (rota não encontrada)
+     */
+    notFound(handler) {
+        this.notFoundHandler = handler;
+    }
+    /**
+     * Registra middlewares globais
+     * Executados antes de qualquer rota
+     */
+    async use(...args) {
+        for (let i = 0; i < args.length; i++) {
+            let middleware = args[i];
+            if (this.resolved)
+                return;
+            try {
+                await middleware(this.req, this.res);
+            }
+            catch (error) {
+                await this.handleError(error);
+                return;
+            }
+        }
+        return;
+    }
+    async get(...args) {
+        if (!this.resolved && this.method == 'GET' && this.isPathName(args[0])) {
+            this.req.queries = getQueryInPathName(this.url.search);
+            await this.foreachMiddleware(args);
+            if (this.resolved)
+                return;
+            let cbResult = args[args.length - 1];
+            let isPathNameInCache = false;
+            for (let pathname of this.config?.cache?.pathname || []) {
+                if (pathname.includes(',') && pathname.split(',')[0] == args[0]) {
+                    let pathNameAndTime = pathname.split(',');
+                    isPathNameInCache = pathNameAndTime[0] == args[0] ? true : false;
+                    if (this.config?.cache) {
+                        this.config.cache.maxage = pathNameAndTime[1];
+                    }
+                    break;
+                }
+                else if (pathname == args[0]) {
+                    isPathNameInCache = true;
+                    break;
+                }
+            }
+            return isPathNameInCache
+                ? await this.setCache(cbResult)
+                : await this.executeHandler(cbResult);
+        }
+        else {
+            this.incrementRoute.push(args[0]);
+        }
+    }
+    async post(...args) {
+        if (!this.resolved && this.method == 'POST' && this.isPathName(args[0])) {
+            try {
+                this.req.bodyJson = await this.req.json();
+            }
+            catch (error) {
+                this.req.bodyJson = undefined;
+            }
+            await this.foreachMiddleware(args);
+            if (this.resolved)
+                return;
+            let cbResult = args[args.length - 1];
+            return await this.executeHandler(cbResult);
+        }
+        else {
+            this.incrementRoute.push(args[0]);
+        }
+    }
+    async put(...args) {
+        if (!this.resolved && this.method == 'PUT' && this.isPathName(args[0])) {
+            try {
+                this.req.bodyJson = await this.req.json();
+            }
+            catch (error) {
+                this.req.bodyJson = undefined;
+            }
+            await this.foreachMiddleware(args);
+            if (this.resolved)
+                return;
+            await this.removeCache(args[0]);
+            let cbResult = args[args.length - 1];
+            return await this.executeHandler(cbResult);
+        }
+        else {
+            this.incrementRoute.push(args[0]);
+        }
+    }
+    async delete(...args) {
+        if (!this.resolved && this.method == 'DELETE' && this.isPathName(args[0])) {
+            await this.foreachMiddleware(args);
+            if (this.resolved)
+                return;
+            await this.removeCache(args[0]);
+            let cbResult = args[args.length - 1];
+            return await this.executeHandler(cbResult);
+        }
+        else {
+            this.incrementRoute.push(args[0]);
+        }
+    }
+    /**
+     * Verifica se o pathname da requisição corresponde à rota
+     * Suporta rotas aninhadas: /api/users/:userId/posts/:postId
+     */
+    isPathName(path) {
+        // Rota exata (sem parâmetros)
+        if (this.url.pathname === path) {
+            return true;
+        }
+        // Rota com parâmetros - usa RouteParser
+        if (path.includes(':')) {
+            // Reutiliza parser se já existe (performance)
+            if (!this.routeParsers.has(path)) {
+                this.routeParsers.set(path, new RouteParser(path));
+            }
+            const parser = this.routeParsers.get(path);
+            const match = parser.match(this.url.pathname);
+            if (match.matched) {
+                // Injeta params no req (plural - mais intuitivo)
+                this.req.params = match.params;
+                // Mantém param para backward compatibility
+                this.req.param = match.params;
+                return true;
+            }
+        }
+        return false;
+    }
+    /**
+     * Executa middlewares de rota com tratamento de erros
+     */
+    async foreachMiddleware(args) {
+        for (let i = 1; i < args.length - 1; i++) {
+            if (this.resolved)
+                return;
+            let middleware = args[i];
+            try {
+                await middleware(this.req, this.res);
+            }
+            catch (error) {
+                await this.handleError(error);
+                return;
+            }
+        }
+        return;
+    }
+    /**
+     * Executa handler de rota com tratamento de erros
+     */
+    async executeHandler(handler) {
+        try {
+            await handler(this.req, this.res);
+        }
+        catch (error) {
+            await this.handleError(error);
+        }
+    }
+    /**
+     * Processa erros usando handler customizado ou padrão
+     */
+    async handleError(error) {
+        if (this.errorHandler) {
+            try {
+                await this.errorHandler(error, this.req, this.res);
+            }
+            catch (handlerError) {
+                // Se o error handler falhar, usar resposta padrão
+                this.res.send({ error: 'Internal Server Error' }, { status: 500 });
+            }
+        }
+        else {
+            // Handler padrão
+            const statusCode = error.statusCode || 500;
+            const message = error.message || 'Internal Server Error';
+            this.res.send({ error: message }, { status: statusCode });
+        }
+    }
+    async setCache(callback) {
+        const cache = caches.default;
+        const cacheKey = new Request(this.req.url, { method: 'GET' });
+        let response = await cache.match(cacheKey);
+        if (!response) {
+            await this.executeHandler(callback);
+            if (this.response) {
+                this.response.headers.append('Cache-Control', 's-maxage=' + this.config.cache.maxage);
+                await cache.put(cacheKey, this.response.clone());
+            }
+            return;
+        }
+        // Retorna resposta em cache
+        return this.res.send(await response.json());
+    }
+    async removeCache(pathname) {
+        if (this.config?.cache?.pathname && this.config.cache.pathname.length > 0 && this.config.cache.pathname.includes(pathname)) {
+            const cacheKey = new Request(this.req.url, { method: 'GET' });
+            await caches.default.delete(cacheKey);
+        }
+        return;
+    }
+    /**
+     * Resolve e retorna a Response final
+     * Deve ser chamado como último método (return app.resolve())
+     */
+    resolve() {
+        if (!this.response) {
+            // Verifica se alguma rota corresponde ao pathname
+            const matched = this.incrementRoute.some(pathname => this.isPathName(pathname));
+            if (!matched) {
+                // Usa handler customizado ou padrão para 404
+                if (this.notFoundHandler) {
+                    try {
+                        this.notFoundHandler(this.req, this.res);
+                    }
+                    catch (error) {
+                        // Fallback se o handler falhar
+                        this.res.send({ error: 'Not Found', path: this.url.pathname }, { status: 404 });
+                    }
+                }
+                else {
+                    // Handler padrão de 404
+                    this.res.send({ error: 'Not Found', path: this.url.pathname }, { status: 404 });
+                }
+            }
+        }
+        return this.response;
+    }
+}
+// Middlewares
+// export function expurgCache(req: Req, res: Res){
+//     let cacheKey = new Request(req.url, {method: 'GET'});
+//     caches.default.delete(cacheKey);
+// }
+
+export { RouteGroup, RouterWorkers, ValidationError, cors, corsDevMode, corsProduction, group, schemas, validate };

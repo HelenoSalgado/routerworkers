@@ -1,2 +1,12 @@
 node_modules
 .npmignore
+
+# Guias e documentação de desenvolvimento interno
+*_RESUMO*.md
+*_FASE*.md
+PUBLISHING.md
+QUICK_PUBLISH.md
+PRE_PUBLISH_CHECK.md
+PROPOSTAS_MELHORIAS_SUMARIO.md
+package.json.backup
+README_v*.md

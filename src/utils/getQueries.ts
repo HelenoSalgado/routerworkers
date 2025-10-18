@@ -1,15 +1,15 @@
-export function getQueryInPathName(search: string) {
+export function getQueryInPathName(search: string): Record<string, any> | undefined {
 
     if (search.includes('?')) {
 
         let preQueries = search.replaceAll('%5B', '[').replaceAll('%5D', ']').replaceAll('%20', ' ').slice(1).toString().split('&');
-        let queries = {};
+        let queries: Record<string, any> = {};
 
         preQueries.forEach((query: any) => {
 
             let q = query.split('=');
 
-            function transformQueries(value: any) {
+            function transformQueries(value: any): any {
                 if (value == 'true') return queries[q[0]] = true;
                 if (value == 'false') return queries[q[0]] = false;
                 if (!Number.isNaN(Number.parseInt(value))) return parseInt(value);

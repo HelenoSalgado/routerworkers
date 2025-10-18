@@ -1,125 +1,484 @@
-# Router Workers
+# RouterWorkers
 
-Um roteador simples para Cloudflare Workers. Suporta middlewares, cache e injeta alguns dados transformados ao objeto Request.
+<div align="center">
 
-## Como usar
+[![npm version](https://img.shields.io/npm/v/routerworkers.svg)](https://www.npmjs.com/package/routerworkers)
+[![npm downloads](https://img.shields.io/npm/dm/routerworkers.svg)](https://www.npmjs.com/package/routerworkers)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)](https://www.typescriptlang.org/)
+[![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-orange)](https://workers.cloudflare.com/)
 
-Você deverá instanciar o objeto de roteamento passando para o construtor o objeto Request do seu worker e, opcionalmente, uma configuração para cache:
+**Um roteador moderno, minimalista e poderoso para Cloudflare Workers**
 
+[Instalação](#-instalação) • [Início Rápido](#-início-rápido) • [Documentação](#-documentação) • [Exemplos](#-exemplos)
+
+</div>
+
+---
+
+## 🌟 Features
+
+- ✅ **Zero Dependências** - Bundle minimalista (~29KB)
+- ✅ **TypeScript First-class** - Tipos completos e inferência automática
+- ✅ **Response Helpers** - 14 métodos semânticos (ok, created, notFound, etc)
+- ✅ **Route Groups** - Organize rotas com prefixos e middlewares compartilhados
+- ✅ **CORS Built-in** - Middleware CORS completo e configurável
+- ✅ **Validação Built-in** - Validador de schemas sem dependências
+- ✅ **Rotas Aninhadas** - Suporte completo (`/users/:id/posts/:postId`)
+- ✅ **Error Handlers** - Tratamento customizado de erros e 404
+- ✅ **Cache API** - Integração nativa com Cloudflare Cache
+- ✅ **Middlewares** - Globais e por rota
+
+---
+
+## 📦 Instalação
+
+```bash
+npm install routerworkers
 ```
-const app = new RouterWorkers(Request, {
-    cache: {
-        pathname: ['/comments'],
-        maxage: '87000'
+
+---
+
+## 🚀 Início Rápido
+
+### Hello World
+
+```typescript
+import { RouterWorkers } from 'routerworkers';
+import type { Req, Res } from 'routerworkers';
+
+export default {
+    async fetch(request: Request): Promise<Response> {
+        const app = new RouterWorkers(request);
+
+        await app.get('/', (req: Req, res: Res) => {
+            res.ok({ message: 'Hello World!' });
+        });
+
+        return app.resolve();
     }
-});
-```
-Dessa forma a rota de comentários será armazenada em cache por 24 horas aproximadamente, exceto se uma requisição `POST`, `PUT` ou `DELETE` for aceita para essa mesma rota, então o cache será removido imediatamente e atualizado na próxima solicitação GET.
-
-```
-await app.get('/comments', async(req: Req, res: Res) => {
-    const comments = await comments.getAll();
-    res.send(comments);
-});
-
-return app.resolve();
-```
-**Obs:** `await` é necessário para que o roteador espere pela resposta da rota alvo, caso contrário ele retornaria uma resposta não resolvida.
-
-Opcionalmente você também poderia passar um objeto de status na resposta, como em:
-
-```
-res.send('Nenhum comentário encontrado', {
-    status: 404
-});
-```
-* O retorno com `app.resolve()` sempre deverá ser o último método a ser chamado, implicitamente ele está retornando o objeto **Response**. 
-
-* Há dois formatos de resposta possíveis: `text/plain` e `application/json`. Logo, qualquer outro formato irá incorrer em erro.
-
-## Middleware Geral
-
-Se você tem um middleware geral ou parcial, poderá usá-lo sempre antes das rotas alvos, com `app.use()`.
-
-```
-app.use(allowOrigin);
-```
-A função de middleware receberá um objeto **req** e **res**:
-
-```
-export async function allowOrigin(req: Req, res: Res){
-    if(req.headers.get('origin') != 'domain.com'){
-        res.send('Origem não permitida', { status: 403 });
-    }
-    return;
 };
 ```
-*Você também poderá usar `res.redirect()` para redirecionar a solicitação*.
 
-**Obs:** Toda vez que um middleware invocar `res.send()` ou `res.redirect()` a solicitação será resolvida imeditamente e retornará a resposta. Não fazer nada ou simplesmente retornar, fará com que a próxima função da pilha seja executada.
+### API RESTful Completa
 
-## Middleware de rota
+```typescript
+import { RouterWorkers, group, cors, validate, schemas } from 'routerworkers';
 
+export default {
+    async fetch(request: Request): Promise<Response> {
+        const app = new RouterWorkers(request);
+
+        // CORS
+        await app.use(cors({ origin: 'https://app.example.com' }));
+
+        // Error handlers
+        app.onError((error, req, res) => {
+            console.error(error);
+            res.serverError(error.message);
+        });
+
+        app.notFound((req, res) => {
+            res.notFound('Route not found');
+        });
+
+        // API v1
+        await group(app, { prefix: '/api/v1' }, async (api) => {
+            
+            // GET /api/v1/users
+            await api.get('/users',
+                validate({ queries: schemas.pagination }),
+                (req, res) => {
+                    res.ok({ users: [] });
+                }
+            );
+
+            // GET /api/v1/users/:id
+            await api.get('/users/:id',
+                validate({ params: { id: schemas.uuid } }),
+                (req, res) => {
+                    res.ok({ user: { id: req.params!.id } });
+                }
+            );
+
+            // POST /api/v1/users
+            await api.post('/users',
+                validate({
+                    body: {
+                        name: { type: 'string', required: true },
+                        email: { type: 'email', required: true }
+                    }
+                }),
+                (req, res) => {
+                    res.created(req.bodyJson, `/api/v1/users/${req.bodyJson.id}`);
+                }
+            );
+
+            // DELETE /api/v1/users/:id
+            await api.delete('/users/:id', (req, res) => {
+                res.noContent();
+            });
+        });
+
+        return app.resolve();
+    }
+};
 ```
-await app.delete('/comments/:id', middlewareAuth, async(req: Req, res: Res) => {
-    await deleteComment(req.param.id);
-    res.send('', { status: 204 });
+
+---
+
+## 📖 Documentação
+
+### Response Helpers
+
+RouterWorkers oferece 14 métodos semânticos para respostas HTTP:
+
+#### Success (2xx)
+
+```typescript
+// 200 OK
+res.ok({ users: [] });
+
+// 201 Created
+res.created({ id: '123' }, '/users/123');
+
+// 202 Accepted
+res.accepted({ jobId: '456', status: 'processing' });
+
+// 204 No Content
+res.noContent();
+```
+
+#### Client Errors (4xx)
+
+```typescript
+// 400 Bad Request
+res.badRequest('Email is required');
+
+// 401 Unauthorized
+res.unauthorized('Token required');
+
+// 403 Forbidden
+res.forbidden('Admin access required');
+
+// 404 Not Found
+res.notFound('User not found');
+
+// 409 Conflict
+res.conflict('Email already exists');
+
+// 422 Unprocessable Entity
+res.unprocessable([{ field: 'email', message: 'Invalid' }]);
+```
+
+#### Server Errors (5xx)
+
+```typescript
+// 500 Internal Server Error
+res.serverError('Something went wrong');
+```
+
+#### Custom
+
+```typescript
+// JSON customizado
+res.json({ custom: true }, 418);
+
+// HTML
+res.html('<h1>Hello</h1>');
+
+// Text
+res.text('Plain text');
+```
+
+---
+
+### Route Groups
+
+Organize rotas com prefixos e middlewares compartilhados:
+
+```typescript
+import { group } from 'routerworkers';
+
+await group(app, { prefix: '/api' }, async (api) => {
+    
+    // GET /api/users
+    await api.get('/users', handler);
+    
+    // POST /api/users
+    await api.post('/users', handler);
 });
 ```
-Por padrão o objeto Request do worker é imutável, então o *Router Workers* instancia um Request mutável, assim é perfeitamente possível customizar *alterar e injetar novas propriedades* ao `req` objeto em seus middlewares. Existem pelo menos três propriedades predefinidas:
 
-* param;
-* queries;
-* bodyJson. 
+#### Com Middlewares
 
-Dessa forma é possível acessar `req.param.id` como na rota acima.
+```typescript
+const authMiddleware = async (req, res) => {
+    if (!req.headers.get('Authorization')) {
+        res.unauthorized();
+    }
+};
 
-A primeira propriedade está disponível para todos os métodos http, já a queries somente para o verbo `GET`, e a última recebe o valor da promessa resolvida de `await request.json()` do objeto Request para solicitações `PUT` e `POST`.
-
-## Cache API
-
-O Router Workers aproveita a API de cache do Cloudfare Workers e armazena em cache todas as respostas de rotas que forem incluídas no array de `pathname` na inicialização do roteador. A propriedade `maxage` deve receber uma string contendo o tempo em segundos que o cache ficará ativo, este é o valor padrão para todas as rotas incluídas no array. Caso queira um tempo de cache diferente para uma rota específica, poderá incluir o valor ao final do pathname, depois de uma vírgula, como `'/comments,37000'`:
-
+await group(app, { 
+    prefix: '/api',
+    middlewares: [authMiddleware]
+}, async (api) => {
+    // Todas as rotas aqui exigem autenticação
+});
 ```
-const app = RouterWorkers(Request, {
+
+#### Grupos Aninhados
+
+```typescript
+await group(app, { prefix: '/api' }, async (api) => {
+    await api.group({ prefix: '/v1' }, async (v1) => {
+        await v1.group({ prefix: '/users' }, async (users) => {
+            // GET /api/v1/users
+            await users.get('/', handler);
+            // GET /api/v1/users/:id
+            await users.get('/:id', handler);
+        });
+    });
+});
+```
+
+---
+
+### CORS
+
+#### Desenvolvimento (permite tudo)
+
+```typescript
+import { corsDevMode } from 'routerworkers';
+
+await app.use(corsDevMode());
+```
+
+#### Produção
+
+```typescript
+import { corsProduction } from 'routerworkers';
+
+await app.use(corsProduction([
+    'https://example.com',
+    'https://app.example.com'
+]));
+```
+
+#### Customizado
+
+```typescript
+import { cors } from 'routerworkers';
+
+await app.use(cors({
+    origin: 'https://example.com', // ou array ou function
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+    maxAge: 86400
+}));
+```
+
+---
+
+### Validação
+
+RouterWorkers inclui um validador built-in completo:
+
+```typescript
+import { validate, schemas } from 'routerworkers';
+
+// Validação de body
+await app.post('/users',
+    validate({
+        body: {
+            name: { type: 'string', required: true, minLength: 3 },
+            email: { type: 'email', required: true },
+            age: { type: 'number', min: 18, max: 120 }
+        }
+    }),
+    (req, res) => {
+        // req.bodyJson já está validado
+        res.created(req.bodyJson);
+    }
+);
+
+// Validação de params
+await app.get('/users/:id',
+    validate({ params: { id: schemas.uuid } }),
+    (req, res) => {
+        res.ok({ user: { id: req.params!.id } });
+    }
+);
+
+// Validação de queries
+await app.get('/users',
+    validate({ queries: schemas.pagination }),
+    (req, res) => {
+        const { page = 1, limit = 10 } = req.queries || {};
+        res.ok({ users: [], page, limit });
+    }
+);
+```
+
+#### Schemas Pré-definidos
+
+```typescript
+schemas.uuid         // UUID válido
+schemas.email        // Email válido
+schemas.url          // URL válida
+schemas.pagination   // { page?: number, limit?: number }
+schemas.date         // Date válida
+schemas.objectId     // MongoDB ObjectId
+```
+
+---
+
+### Rotas Aninhadas
+
+```typescript
+// Suporte completo a rotas aninhadas
+await app.get('/users/:userId/posts/:postId', (req, res) => {
+    const { userId, postId } = req.params!;
+    res.ok({ userId, postId });
+});
+```
+
+---
+
+### Middlewares
+
+#### Global
+
+```typescript
+await app.use(async (req, res) => {
+    console.log(`${req.method} ${req.url}`);
+});
+```
+
+#### Por Rota
+
+```typescript
+const authMiddleware = async (req, res) => {
+    if (!req.headers.get('Authorization')) {
+        res.unauthorized();
+    }
+};
+
+await app.get('/protected', authMiddleware, (req, res) => {
+    res.ok({ protected: true });
+});
+```
+
+---
+
+### Error Handlers
+
+```typescript
+// Handler de erros customizado
+app.onError((error, req, res) => {
+    console.error('[ERROR]', error);
+    res.serverError(error.message);
+});
+
+// Handler 404 customizado
+app.notFound((req, res) => {
+    res.notFound(`Route ${req.url} not found`);
+});
+```
+
+---
+
+### Cache
+
+```typescript
+const app = new RouterWorkers(request, {
     cache: {
-        pathname: ['/comments,37000', '/likes/:slug'],
-        maxage: '87000'
+        pathname: ['/users', '/posts/:id'],
+        maxage: '86400' // 24 horas
     }
 });
 ```
-* A chave para armazenar, buscar ou deletar o cache é sempre a URL (caminho completo) da solicitação. 
-* O cache só responde à solicitações do tipo `GET` e sempre que um recurso for criado ou modificado, o cache correspondente ao `pathname` será eliminado.
 
-### Desabilitar Cache
+---
 
-Talvez você queira evitar respostas em cache enquanto desenvolve suas funções workers, a solução é adicionar sua configuração de cache somente para produção. Você pode fazer isso no arquivo `wrangler.toml`:
+## 📝 Exemplos
 
-```
-[vars]
-CACHE = { pathname = ['/comments,37000', '/likes/:slug'], maxage = '87000' }
-```
+Veja a pasta [`examples/`](./examples) para exemplos completos:
 
-E então definir um valor indefinido para a variável `CACHE` no arquivo `.dev.vars`:
+- [Fase 1 - Rotas Aninhadas](./examples/fase1-example.ts)
+- [Fase 2A - Validação](./examples/fase2a-example.ts)
+- [Fase 3 - Response Helpers + Groups + CORS](./examples/fase3-example.ts)
 
-```
-CACHE=undefined
-```
-Assim feito, basta chamar `env.CACHE` como valor na configuração de cache do Router Workers:
+---
 
-```
-...
+## 🎯 Comparação com Outros Frameworks
 
-cache: env.CACHE
+| Feature | RouterWorkers | Express | Hono |
+|---------|--------------|---------|------|
+| Bundle Size | ~29KB | ~200KB | ~20KB |
+| Response Helpers | ✅ 14 | ✅ ~10 | ✅ ~12 |
+| Route Groups | ✅ | ✅ | ✅ |
+| CORS Built-in | ✅ | ❌ | ✅ |
+| Validação Built-in | ✅ | ❌ | ❌ |
+| TypeScript | ✅ | ⚠️ | ✅ |
+| Workers Native | ✅ | ❌ | ✅ |
+| Zero Deps | ✅ | ❌ | ✅ |
 
-...
-```
-## Limitações
+---
 
-* Não existe suporte para rotas aninhadas, ex: `/user/profile/:id`;
-* CORS mecânismo não está presente.
+## 🛠️ Tecnologias
 
-O `routerworkers` não consegue fazer nada além do que aqui foi descrito. Talvez melhore com o tempo. Visite o repositório no github e ajude no que puder. Obrigado. 
+- TypeScript 5.9+
+- Cloudflare Workers
+- Rollup (build)
+- Jest (testes)
+
+---
+
+## 📊 Status
+
+- ✅ **51 testes** passando (100%)
+- ✅ **Zero dependências**
+- ✅ **Bundle: ~29KB**
+- ✅ **TypeScript strict mode**
+- ✅ **Pronto para produção**
+
+---
+
+## 🤝 Contribuindo
+
+Contribuições são bem-vindas! Por favor:
+
+1. Fork o projeto
+2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
+3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
+4. Push para a branch (`git push origin feature/AmazingFeature`)
+5. Abra um Pull Request
+
+---
+
+## 📄 Licença
+
+MIT © [Heleno Salgado](https://github.com/HelenoSalgado)
+
+---
+
+## 🔗 Links
+
+- [GitHub](https://github.com/HelenoSalgado/routerworkers)
+- [npm](https://www.npmjs.com/package/routerworkers)
+- [Issues](https://github.com/HelenoSalgado/routerworkers/issues)
+
+---
+
+<div align="center">
+
+**Feito com ❤️ para Cloudflare Workers**
+
+Se este projeto foi útil, considere dar uma ⭐ no GitHub!
+
+</div> 
 
 
 
