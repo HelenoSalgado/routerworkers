@@ -64,6 +64,7 @@ export type ConfigWorker = {
     cache?: {
         pathname: string[];
         maxage: string;
+        version?: string;
     };
     cors?: {
         origin?: string | string[] | ((origin: string) => boolean);

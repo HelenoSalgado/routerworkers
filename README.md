@@ -389,16 +389,83 @@ app.notFound((req, res) => {
 
 ---
 
-### Cache
+### Cache com Invalidação Automática
+
+O RouterWorkers oferece integração nativa com a [Cache API](https://developers.cloudflare.com/workers/runtime-apis/cache/) da Cloudflare, com uma solução robusta para o problema de invalidação de cache entre deploys.
+
+#### O Problema: Cache Persistente
+
+Por padrão, o cache da Cloudflare é persistente. Se você fizer um novo deploy com alterações no código, as respostas para rotas cacheadas podem continuar vindo da versão antiga (em cache), pois a chave do cache (a URL da rota) não mudou. A solução comum, mas tediosa, é adicionar manualmente um número de versão.
+
+#### A Solução: Versionamento Automático
+
+A solução ideal é usar um identificador único para cada deploy como parte da chave do cache. O RouterWorkers faz isso de forma transparente quando configurado corretamente com o ambiente da Cloudflare.
+
+**Passo 1: Configure seu `wrangler.toml`**
+
+Adicione a seguinte configuração ao seu `wrangler.toml` para que a Cloudflare injete os metadados da versão do seu Worker na variável de ambiente `CF_VERSION_METADATA`.
+
+```toml
+# wrangler.toml
+name = "my-worker"
+main = "src/index.ts"
+compatibility_date = "2023-10-26"
+
+# Habilita a injeção dos metadados da implantação
+[version_metadata]
+binding = "CF_VERSION_METADATA"
+```
+
+**Passo 2: Use o ID da Versão na Configuração**
+
+No seu código, passe o ID da versão (`env.CF_VERSION_METADATA.id`) para a configuração do RouterWorkers. Ele será usado para criar uma chave de cache única para o deploy atual.
 
 ```typescript
-const app = new RouterWorkers(request, {
-    cache: {
-        pathname: ['/users', '/posts/:id'],
-        maxage: '86400' // 24 horas
+// src/index.ts
+import { RouterWorkers } from 'routerworkers';
+import type { Req, Res, ConfigWorker } from 'routerworkers';
+
+// Defina a interface para o seu ambiente
+interface Env {
+    CF_VERSION_METADATA: {
+        id: string;
+        timestamp: string;
+        tag: string;
+    };
+}
+
+export default {
+    async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+
+        // Obtenha o ID único do deploy
+        const deploymentId = env.CF_VERSION_METADATA.id;
+
+        // Configure o cache com o ID de versionamento
+        const config: ConfigWorker = {
+            cache: {
+                pathname: ['/data'],      // A rota que queremos cachear
+                maxage: '3600',           // Tempo de vida do cache (1 hora)
+                version: deploymentId     // Chave de versionamento automático!
+            }
+        };
+
+        const app = new RouterWorkers(request, config);
+
+        // Esta rota será cacheada automaticamente por deploy
+        await app.get('/data', (req: Req, res: Res) => {
+            console.log('Executando a lógica da rota (não veio do cache)');
+            res.ok({
+                message: 'Estes são dados frescos, servidos diretamente pela função.',
+                deploymentId: deploymentId
+            });
+        });
+
+        return app.resolve();
     }
-});
+};
 ```
+
+Com essa configuração, a cada novo `wrangler deploy`, o `deploymentId` muda, o cache antigo é automaticamente ignorado e seu Worker servirá a nova versão, que será então cacheada.
 
 ---
 

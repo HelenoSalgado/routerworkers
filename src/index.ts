@@ -339,15 +339,17 @@ export class RouterWorkers {
     }
 
     async setCache(callback: Function) {
-        const cache = caches.default;
-        const cacheKey = new Request(this.req.url, {method: 'GET'});
-        let response = await cache.match(cacheKey);
+        const cacheUrl = this.config?.cache?.version 
+            ? `${this.req.url}?v=${this.config.cache.version}` 
+            : this.req.url;
+        const cacheKey = new Request(cacheUrl, {method: 'GET'});
+        let response = await caches.default.match(cacheKey);
         
         if (!response) {
             await this.executeHandler(callback);
-            if (this.response) {
+            if (this.response && this.response.ok) {
                 this.response.headers.append('Cache-Control', 's-maxage=' + this.config!.cache!.maxage);
-                await cache.put(cacheKey, this.response.clone());
+                await caches.default.put(cacheKey, this.response.clone());
             }
             return;
         }
@@ -358,7 +360,10 @@ export class RouterWorkers {
 
     async removeCache(pathname: string){
         if(this.config?.cache?.pathname && this.config.cache.pathname.length > 0 && this.config.cache.pathname.includes(pathname)){
-            const cacheKey = new Request(this.req.url, {method: 'GET'});
+            const cacheUrl = this.config?.cache?.version 
+                ? `${this.req.url}?v=${this.config.cache.version}` 
+                : this.req.url;
+            const cacheKey = new Request(cacheUrl, {method: 'GET'});
             await caches.default.delete(cacheKey);
         }
         return;

@@ -1,0 +1,7 @@
+name = "routerworkers-example"
+main = "examples/cache-example.ts"
+compatibility_date = "2023-10-26"
+
+# Habilita a injeção dos metadados da implantação na variável 'CF_VERSION_METADATA'
+[version_metadata]
+binding = "CF_VERSION_METADATA"
