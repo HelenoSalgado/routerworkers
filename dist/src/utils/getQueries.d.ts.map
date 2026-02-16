@@ -1,1 +1,1 @@
-{"version":3,"file":"getQueries.d.ts","sourceRoot":"","sources":["../../../src/utils/getQueries.ts"],"names":[],"mappings":"AAAA,wBAAgB,kBAAkB,CAAC,MAAM,EAAE,MAAM,GAAG,MAAM,CAAC,MAAM,EAAE,GAAG,CAAC,GAAG,SAAS,CAmClF"}
+{"version":3,"file":"getQueries.d.ts","sourceRoot":"","sources":["../../../src/utils/getQueries.ts"],"names":[],"mappings":"AAAA,wBAAgB,kBAAkB,CAChC,MAAM,EAAE,MAAM,GACb,MAAM,CAAC,MAAM,EAAE,GAAG,CAAC,GAAG,SAAS,CAwCjC"}

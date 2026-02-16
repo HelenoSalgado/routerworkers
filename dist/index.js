@@ -1,32 +1,38 @@
 function getQueryInPathName(search) {
     if (search.includes('?')) {
-        let preQueries = search.replaceAll('%5B', '[').replaceAll('%5D', ']').replaceAll('%20', ' ').slice(1).toString().split('&');
-        let queries = {};
+        const preQueries = search
+            .replaceAll('%5B', '[')
+            .replaceAll('%5D', ']')
+            .replaceAll('%20', ' ')
+            .slice(1)
+            .toString()
+            .split('&');
+        const queries = {};
         preQueries.forEach((query) => {
-            let q = query.split('=');
+            const q = query.split('=');
             function transformQueries(value) {
                 if (value == 'true')
-                    return queries[q[0]] = true;
+                    return (queries[q[0]] = true);
                 if (value == 'false')
-                    return queries[q[0]] = false;
+                    return (queries[q[0]] = false);
                 if (!Number.isNaN(Number.parseInt(value)))
                     return parseInt(value);
                 if (q[1].includes('[') && q[1].includes(']')) {
-                    let array = q[1].replace('[', '').replace(']', '').split(',');
-                    let arrayModify = array.map((value) => {
+                    const array = q[1].replace('[', '').replace(']', '').split(',');
+                    const arrayModify = array.map((value) => {
                         if (value == 'true')
                             return true;
                         if (value == 'false')
                             return false;
                         if (!Number.isNaN(Number.parseInt(value)))
                             return parseInt(value);
-                        if (typeof value == "string")
+                        if (typeof value == 'string')
                             return value.replaceAll('%27', '').replaceAll('%22', '');
                         return value;
                     });
                     return arrayModify;
                 }
-                if (typeof value == "string")
+                if (typeof value == 'string')
                     return value.replaceAll('%27', '').replaceAll('%22', '');
                 return value;
             }
@@ -95,7 +101,8 @@ class ValidationError extends Error {
  */
 function validateValue(value, rule, fieldName) {
     // Required check
-    if (rule.required && (value === undefined || value === null || value === '')) {
+    if (rule.required &&
+        (value === undefined || value === null || value === '')) {
         return new ValidationError(fieldName, rule.message || `${fieldName} is required`, 'required');
     }
     // Se não é required e está vazio, skip outras validações
@@ -110,13 +117,14 @@ function validateValue(value, rule, fieldName) {
                     return new ValidationError(fieldName, rule.message || `${fieldName} must be a string`, 'invalid_type');
                 }
                 break;
-            case 'number':
+            case 'number': {
                 const num = typeof value === 'string' ? parseFloat(value) : value;
                 if (typeof num !== 'number' || isNaN(num)) {
                     return new ValidationError(fieldName, rule.message || `${fieldName} must be a number`, 'invalid_type');
                 }
                 value = num; // Coerce para number
                 break;
+            }
             case 'boolean':
                 if (typeof value !== 'boolean') {
                     // Aceita 'true'/'false' strings
@@ -129,7 +137,8 @@ function validateValue(value, rule, fieldName) {
                 }
                 break;
             case 'email':
-                if (typeof value !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+                if (typeof value !== 'string' ||
+                    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
                     return new ValidationError(fieldName, rule.message || `${fieldName} must be a valid email`, 'invalid_email');
                 }
                 break;
@@ -156,7 +165,9 @@ function validateValue(value, rule, fieldName) {
                 }
                 break;
             case 'object':
-                if (typeof value !== 'object' || Array.isArray(value) || value === null) {
+                if (typeof value !== 'object' ||
+                    Array.isArray(value) ||
+                    value === null) {
                     return new ValidationError(fieldName, rule.message || `${fieldName} must be an object`, 'invalid_type');
                 }
                 break;
@@ -174,10 +185,12 @@ function validateValue(value, rule, fieldName) {
     // MinLength/MaxLength para strings e arrays
     if (typeof value === 'string' || Array.isArray(value)) {
         if (rule.minLength !== undefined && value.length < rule.minLength) {
-            return new ValidationError(fieldName, rule.message || `${fieldName} must have at least ${rule.minLength} characters`, 'too_short');
+            return new ValidationError(fieldName, rule.message ||
+                `${fieldName} must have at least ${rule.minLength} characters`, 'too_short');
         }
         if (rule.maxLength !== undefined && value.length > rule.maxLength) {
-            return new ValidationError(fieldName, rule.message || `${fieldName} must have at most ${rule.maxLength} characters`, 'too_long');
+            return new ValidationError(fieldName, rule.message ||
+                `${fieldName} must have at most ${rule.maxLength} characters`, 'too_long');
         }
     }
     // Pattern para strings
@@ -194,7 +207,9 @@ function validateValue(value, rule, fieldName) {
     if (rule.custom) {
         const result = rule.custom(value);
         if (result !== true) {
-            return new ValidationError(fieldName, typeof result === 'string' ? result : (rule.message || `${fieldName} failed custom validation`), 'custom_validation');
+            return new ValidationError(fieldName, typeof result === 'string'
+                ? result
+                : rule.message || `${fieldName} failed custom validation`, 'custom_validation');
         }
     }
     return null;
@@ -256,11 +271,11 @@ function validate(config) {
                 // Handler padrão: retorna erros estruturados
                 res.send({
                     error: 'Validation failed',
-                    issues: allErrors.map(err => ({
+                    issues: allErrors.map((err) => ({
                         field: err.field,
                         message: err.message,
-                        code: err.code
-                    }))
+                        code: err.code,
+                    })),
                 }, { status: 400 });
             }
         }
@@ -287,8 +302,8 @@ const schemas = {
      */
     pagination: {
         page: { type: 'number', min: 1 },
-        limit: { type: 'number', min: 1, max: 100 }
-    }
+        limit: { type: 'number', min: 1, max: 100 },
+    },
 };
 
 /**
@@ -313,7 +328,7 @@ const schemas = {
  * ```
  */
 function cors(options = {}) {
-    const { origin = '*', methods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'], allowedHeaders = ['Content-Type', 'Authorization'], exposedHeaders = [], credentials = false, maxAge = 86400 } = options;
+    const { origin = '*', methods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'], allowedHeaders = ['Content-Type', 'Authorization'], exposedHeaders = [], credentials = false, maxAge = 86400, } = options;
     return async (req, res) => {
         const requestOrigin = req.headers.get('Origin') || '';
         // Determinar se a origin é permitida
@@ -333,8 +348,15 @@ function cors(options = {}) {
         }
         // Se a requisição é OPTIONS (preflight), responder diretamente
         if (req.method === 'OPTIONS') {
-            // Responder ao preflight com 204 No Content
-            res.noContent();
+            const headers = {
+                'Access-Control-Allow-Origin': allowOrigin,
+                'Access-Control-Allow-Methods': methods.join(', '),
+                'Access-Control-Allow-Headers': allowedHeaders.join(', '),
+                'Access-Control-Max-Age': String(maxAge),
+                ...(credentials ? { 'Access-control-Allow-Credentials': 'true' } : {}),
+            };
+            // Responder ao preflight com 204 No Content e os headers corretos
+            res.send(null, { status: 204, headers });
             return;
         }
         // Para outras requisições, adicionar headers CORS à resposta
@@ -342,7 +364,9 @@ function cors(options = {}) {
         req.__corsHeaders = {
             'Access-Control-Allow-Origin': allowOrigin,
             ...(credentials ? { 'Access-Control-Allow-Credentials': 'true' } : {}),
-            ...(exposedHeaders.length > 0 ? { 'Access-Control-Expose-Headers': exposedHeaders.join(', ') } : {})
+            ...(exposedHeaders.length > 0
+                ? { 'Access-Control-Expose-Headers': exposedHeaders.join(', ') }
+                : {}),
         };
     };
 }
@@ -353,7 +377,7 @@ function corsDevMode() {
     return cors({
         origin: '*',
         credentials: false,
-        methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD']
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
     });
 }
 /**
@@ -365,7 +389,7 @@ function corsProduction(allowedOrigins) {
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
         allowedHeaders: ['Content-Type', 'Authorization'],
-        maxAge: 86400
+        maxAge: 86400,
     });
 }
 
@@ -455,11 +479,11 @@ class RouteGroup {
         const nestedPrefix = this.getFullPrefix() + (config.prefix || '');
         const nestedMiddlewares = [
             ...(this.config.middlewares || []),
-            ...(config.middlewares || [])
+            ...(config.middlewares || []),
         ];
         const nestedGroup = new RouteGroup(this.app, {
             prefix: nestedPrefix,
-            middlewares: nestedMiddlewares
+            middlewares: nestedMiddlewares,
         });
         return callback(nestedGroup);
     }
@@ -495,7 +519,7 @@ class RouterWorkers {
     response; // Será inicializado no res.send ou res.redirect
     res = {
         send: (data, config) => {
-            if (typeof data == "object") {
+            if (data !== null && typeof data == 'object') {
                 this.response = Response.json(data, config);
             }
             else {
@@ -518,7 +542,9 @@ class RouterWorkers {
             this.resolved = true;
         },
         accepted: (data) => {
-            this.response = Response.json(data || { message: 'Accepted' }, { status: 202 });
+            this.response = Response.json(data || { message: 'Accepted' }, {
+                status: 202,
+            });
             this.resolved = true;
         },
         noContent: () => {
@@ -532,19 +558,19 @@ class RouterWorkers {
         },
         unauthorized: (error) => {
             this.response = Response.json({
-                error: error || 'Unauthorized'
+                error: error || 'Unauthorized',
             }, { status: 401 });
             this.resolved = true;
         },
         forbidden: (error) => {
             this.response = Response.json({
-                error: error || 'Forbidden'
+                error: error || 'Forbidden',
             }, { status: 403 });
             this.resolved = true;
         },
         notFound: (error) => {
             this.response = Response.json({
-                error: error || 'Not Found'
+                error: error || 'Not Found',
             }, { status: 404 });
             this.resolved = true;
         },
@@ -556,13 +582,13 @@ class RouterWorkers {
         unprocessable: (errors) => {
             this.response = Response.json({
                 error: 'Validation failed',
-                issues: errors
+                issues: errors,
             }, { status: 422 });
             this.resolved = true;
         },
         serverError: (error) => {
             this.response = Response.json({
-                error: error || 'Internal Server Error'
+                error: error || 'Internal Server Error',
             }, { status: 500 });
             this.resolved = true;
         },
@@ -573,17 +599,17 @@ class RouterWorkers {
         html: (content, status = 200) => {
             this.response = new Response(content, {
                 status,
-                headers: { 'Content-Type': 'text/html; charset=utf-8' }
+                headers: { 'Content-Type': 'text/html; charset=utf-8' },
             });
             this.resolved = true;
         },
         text: (content, status = 200) => {
             this.response = new Response(content, {
                 status,
-                headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+                headers: { 'Content-Type': 'text/plain; charset=utf-8' },
             });
             this.resolved = true;
-        }
+        },
     };
     constructor(request, config) {
         this.url = new URL(request.url);
@@ -610,7 +636,7 @@ class RouterWorkers {
      */
     async use(...args) {
         for (let i = 0; i < args.length; i++) {
-            let middleware = args[i];
+            const middleware = args[i];
             if (this.resolved)
                 return;
             try {
@@ -629,11 +655,11 @@ class RouterWorkers {
             await this.foreachMiddleware(args);
             if (this.resolved)
                 return;
-            let cbResult = args[args.length - 1];
+            const cbResult = args[args.length - 1];
             let isPathNameInCache = false;
-            for (let pathname of this.config?.cache?.pathname || []) {
+            for (const pathname of this.config?.cache?.pathname || []) {
                 if (pathname.includes(',') && pathname.split(',')[0] == args[0]) {
-                    let pathNameAndTime = pathname.split(',');
+                    const pathNameAndTime = pathname.split(',');
                     isPathNameInCache = pathNameAndTime[0] == args[0] ? true : false;
                     if (this.config?.cache) {
                         this.config.cache.maxage = pathNameAndTime[1];
@@ -658,13 +684,13 @@ class RouterWorkers {
             try {
                 this.req.bodyJson = await this.req.json();
             }
-            catch (error) {
+            catch {
                 this.req.bodyJson = undefined;
             }
             await this.foreachMiddleware(args);
             if (this.resolved)
                 return;
-            let cbResult = args[args.length - 1];
+            const cbResult = args[args.length - 1];
             return await this.executeHandler(cbResult);
         }
         else {
@@ -676,14 +702,14 @@ class RouterWorkers {
             try {
                 this.req.bodyJson = await this.req.json();
             }
-            catch (error) {
+            catch {
                 this.req.bodyJson = undefined;
             }
             await this.foreachMiddleware(args);
             if (this.resolved)
                 return;
             await this.removeCache(args[0]);
-            let cbResult = args[args.length - 1];
+            const cbResult = args[args.length - 1];
             return await this.executeHandler(cbResult);
         }
         else {
@@ -696,7 +722,7 @@ class RouterWorkers {
             if (this.resolved)
                 return;
             await this.removeCache(args[0]);
-            let cbResult = args[args.length - 1];
+            const cbResult = args[args.length - 1];
             return await this.executeHandler(cbResult);
         }
         else {
@@ -737,7 +763,7 @@ class RouterWorkers {
         for (let i = 1; i < args.length - 1; i++) {
             if (this.resolved)
                 return;
-            let middleware = args[i];
+            const middleware = args[i];
             try {
                 await middleware(this.req, this.res);
             }
@@ -767,7 +793,7 @@ class RouterWorkers {
             try {
                 await this.errorHandler(error, this.req, this.res);
             }
-            catch (handlerError) {
+            catch {
                 // Se o error handler falhar, usar resposta padrão
                 this.res.send({ error: 'Internal Server Error' }, { status: 500 });
             }
@@ -784,7 +810,7 @@ class RouterWorkers {
             ? `${this.req.url}?v=${this.config.cache.version}`
             : this.req.url;
         const cacheKey = new Request(cacheUrl, { method: 'GET' });
-        let response = await caches.default.match(cacheKey);
+        const response = await caches.default.match(cacheKey);
         if (!response) {
             await this.executeHandler(callback);
             if (this.response && this.response.ok) {
@@ -797,7 +823,9 @@ class RouterWorkers {
         return this.res.send(await response.json());
     }
     async removeCache(pathname) {
-        if (this.config?.cache?.pathname && this.config.cache.pathname.length > 0 && this.config.cache.pathname.includes(pathname)) {
+        if (this.config?.cache?.pathname &&
+            this.config.cache.pathname.length > 0 &&
+            this.config.cache.pathname.includes(pathname)) {
             const cacheUrl = this.config?.cache?.version
                 ? `${this.req.url}?v=${this.config.cache.version}`
                 : this.req.url;
@@ -813,14 +841,14 @@ class RouterWorkers {
     resolve() {
         if (!this.response) {
             // Verifica se alguma rota corresponde ao pathname
-            const matched = this.incrementRoute.some(pathname => this.isPathName(pathname));
+            const matched = this.incrementRoute.some((pathname) => this.isPathName(pathname));
             if (!matched) {
                 // Usa handler customizado ou padrão para 404
                 if (this.notFoundHandler) {
                     try {
                         this.notFoundHandler(this.req, this.res);
                     }
-                    catch (error) {
+                    catch {
                         // Fallback se o handler falhar
                         this.res.send({ error: 'Not Found', path: this.url.pathname }, { status: 404 });
                     }
@@ -841,3 +869,4 @@ class RouterWorkers {
 // }
 
 export { RouteGroup, RouterWorkers, ValidationError, cors, corsDevMode, corsProduction, group, schemas, validate };
+//# sourceMappingURL=index.js.map

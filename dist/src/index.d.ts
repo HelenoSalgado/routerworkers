@@ -1,10 +1,10 @@
-import { Args, ConfigWorker, Req, Res, ErrorHandler, NotFoundHandler } from "../types/index";
-export { validate, schemas, ValidationError } from "./utils/validator";
-export type { ValidationRule, ValidationSchema, ValidateConfig } from "./utils/validator";
-export { cors, corsDevMode, corsProduction } from "./middlewares/cors";
-export type { CorsOptions } from "./middlewares/cors";
-export { group, RouteGroup } from "./utils/routeGroup";
-export type { RouteGroupConfig } from "./utils/routeGroup";
+import { Args, ConfigWorker, Req, Res, ErrorHandler, NotFoundHandler, Middleware, RouteHandler } from '../types/index';
+export { validate, schemas, ValidationError } from './utils/validator';
+export type { ValidationRule, ValidationSchema, ValidateConfig, } from './utils/validator';
+export { cors, corsDevMode, corsProduction } from './middlewares/cors';
+export type { CorsOptions } from './middlewares/cors';
+export { group, RouteGroup } from './utils/routeGroup';
+export type { RouteGroupConfig } from './utils/routeGroup';
 export declare class RouterWorkers {
     private method;
     private url;
@@ -31,7 +31,7 @@ export declare class RouterWorkers {
      * Registra middlewares globais
      * Executados antes de qualquer rota
      */
-    use(...args: Function[]): Promise<void>;
+    use(...args: Middleware[]): Promise<void>;
     get(...args: Args): Promise<void>;
     post(...args: Args): Promise<void>;
     put(...args: Args): Promise<void>;
@@ -53,7 +53,7 @@ export declare class RouterWorkers {
      * Processa erros usando handler customizado ou padrão
      */
     private handleError;
-    setCache(callback: Function): Promise<void>;
+    setCache(callback: RouteHandler): Promise<void>;
     removeCache(pathname: string): Promise<void>;
     /**
      * Resolve e retorna a Response final

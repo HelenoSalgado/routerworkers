@@ -2,7 +2,7 @@
  * CORS Middleware para RouterWorkers
  * Configuração flexível e compatível com Cloudflare Workers
  */
-import type { Middleware } from "../../types/index";
+import type { Middleware } from '../../types/index';
 /**
  * Configuração CORS
  */

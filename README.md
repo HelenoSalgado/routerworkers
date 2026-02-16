@@ -3,7 +3,6 @@
 <div align="center">
 
 [![npm version](https://img.shields.io/npm/v/routerworkers.svg)](https://www.npmjs.com/package/routerworkers)
-[![npm downloads](https://img.shields.io/npm/dm/routerworkers.svg)](https://www.npmjs.com/package/routerworkers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)](https://www.typescriptlang.org/)
 [![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-orange)](https://workers.cloudflare.com/)
@@ -13,6 +12,26 @@
 [Instalação](#-instalação) • [Início Rápido](#-início-rápido) • [Documentação](#-documentação) • [Exemplos](#-exemplos)
 
 </div>
+
+---
+## 📋 Índice
+
+- [🌟 Features](#-features)
+- [📦 Instalação](#-instalação)
+- [🚀 Início Rápido](#-início-rápido)
+- [📖 Documentação](#-documentação)
+  - [Response Helpers](#response-helpers)
+  - [Route Groups](#route-groups)
+  - [CORS](#cors)
+  - [Validação](#validação)
+  - [Rotas Aninhadas](#rotas-aninhadas)
+  - [Middlewares](#middlewares)
+  - [Error Handlers](#error-handlers)
+  - [Cache com Invalidação Automática](#cache-com-invalidação-automática)
+- [📝 Exemplos](#-exemplos)
+- [🛠️ Tecnologias](#-tecnologias)
+- [📄 Licença](#-licença)
+- [🔗 Links](#-links)
 
 ---
 
@@ -48,7 +67,9 @@ import { RouterWorkers } from 'routerworkers';
 import type { Req, Res } from 'routerworkers';
 
 export default {
+
     async fetch(request: Request): Promise<Response> {
+
         const app = new RouterWorkers(request);
 
         await app.get('/', (req: Req, res: Res) => {
@@ -57,68 +78,39 @@ export default {
 
         return app.resolve();
     }
+
 };
 ```
 
-### API RESTful Completa
+### Exemplo Prático
 
 ```typescript
-import { RouterWorkers, group, cors, validate, schemas } from 'routerworkers';
+import { RouterWorkers, validate } from 'routerworkers';
+import type { Req, Res } from 'routerworkers';
 
 export default {
+
     async fetch(request: Request): Promise<Response> {
+
         const app = new RouterWorkers(request);
 
-        // CORS
-        await app.use(cors({ origin: 'https://app.example.com' }));
-
-        // Error handlers
-        app.onError((error, req, res) => {
-            console.error(error);
-            res.serverError(error.message);
-        });
-
-        app.notFound((req, res) => {
-            res.notFound('Route not found');
-        });
-
-        // API v1
-        await group(app, { prefix: '/api/v1' }, async (api) => {
-            
-            // GET /api/v1/users
-            await api.get('/users',
-                validate({ queries: schemas.pagination }),
-                (req, res) => {
-                    res.ok({ users: [] });
+        // Rota com validação de body
+        await app.post('/users',
+            validate({
+                body: {
+                    name: { type: 'string', required: true },
+                    email: { type: 'email', required: true }
                 }
-            );
+            }),
+            (req: Req, res: Res) => {
+                const newUser = req.bodyJson;
+                // Lógica para criar usuário...
+                res.created({ user: newUser });
+            }
+        );
 
-            // GET /api/v1/users/:id
-            await api.get('/users/:id',
-                validate({ params: { id: schemas.uuid } }),
-                (req, res) => {
-                    res.ok({ user: { id: req.params!.id } });
-                }
-            );
-
-            // POST /api/v1/users
-            await api.post('/users',
-                validate({
-                    body: {
-                        name: { type: 'string', required: true },
-                        email: { type: 'email', required: true }
-                    }
-                }),
-                (req, res) => {
-                    res.created(req.bodyJson, `/api/v1/users/${req.bodyJson.id}`);
-                }
-            );
-
-            // DELETE /api/v1/users/:id
-            await api.delete('/users/:id', (req, res) => {
-                res.noContent();
-            });
-        });
+        // Handler para rotas não encontradas
+        app.notFound((_req, res) => res.notFound('Oops! Rota não encontrada.'));
 
         return app.resolve();
     }
@@ -327,9 +319,7 @@ await app.get('/users',
 schemas.uuid         // UUID válido
 schemas.email        // Email válido
 schemas.url          // URL válida
-schemas.pagination   // { page?: number, limit?: number }
-schemas.date         // Date válida
-schemas.objectId     // MongoDB ObjectId
+schemas.pagination   // { page?: { type: 'number', min: 1 }, limit?: { type: 'number', min: 1, max: 100 } }
 ```
 
 ---
@@ -479,20 +469,6 @@ Veja a pasta [`examples/`](./examples) para exemplos completos:
 
 ---
 
-## 🎯 Comparação com Outros Frameworks
-
-| Feature | RouterWorkers | Express | Hono |
-|---------|--------------|---------|------|
-| Bundle Size | ~29KB | ~200KB | ~20KB |
-| Response Helpers | ✅ 14 | ✅ ~10 | ✅ ~12 |
-| Route Groups | ✅ | ✅ | ✅ |
-| CORS Built-in | ✅ | ❌ | ✅ |
-| Validação Built-in | ✅ | ❌ | ❌ |
-| TypeScript | ✅ | ⚠️ | ✅ |
-| Workers Native | ✅ | ❌ | ✅ |
-| Zero Deps | ✅ | ❌ | ✅ |
-
----
 
 ## 🛠️ Tecnologias
 
@@ -500,28 +476,6 @@ Veja a pasta [`examples/`](./examples) para exemplos completos:
 - Cloudflare Workers
 - Rollup (build)
 - Jest (testes)
-
----
-
-## 📊 Status
-
-- ✅ **51 testes** passando (100%)
-- ✅ **Zero dependências**
-- ✅ **Bundle: ~29KB**
-- ✅ **TypeScript strict mode**
-- ✅ **Pronto para produção**
-
----
-
-## 🤝 Contribuindo
-
-Contribuições são bem-vindas! Por favor:
-
-1. Fork o projeto
-2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
-3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
-4. Push para a branch (`git push origin feature/AmazingFeature`)
-5. Abra um Pull Request
 
 ---
 

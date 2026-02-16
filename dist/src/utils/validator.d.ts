@@ -2,7 +2,7 @@
  * Validador Built-in do RouterWorkers
  * Zero dependências, simples e poderoso
  */
-import type { Req, Res, Middleware } from "../../types/index";
+import type { Req, Res, Middleware } from '../../types/index';
 /**
  * Regra de validação para um campo
  */

@@ -2,8 +2,8 @@
  * Route Groups para RouterWorkers
  * Permite agrupar rotas com prefixos e middlewares compartilhados
  */
-import type { RouterWorkers } from "../index";
-import type { Middleware } from "../../types/index";
+import type { RouterWorkers } from '../index';
+import type { Middleware } from '../../types/index';
 /**
  * Configuração de um grupo de rotas
  */

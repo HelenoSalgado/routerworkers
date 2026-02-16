@@ -11,6 +11,7 @@ export default {
     typescript({
       tsconfig: './tsconfig.json',
       declaration: false, // Types serão gerados pelo tsc separadamente
+      declarationMap: false, // O plugin não gera mapas de declaração se 'declaration' for false
       sourceMap: true
     })
   ],

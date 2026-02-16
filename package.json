@@ -1,6 +1,6 @@
 {
   "name": "routerworkers",
-  "version": "0.3.0",
+  "version": "1.1.0",
   "description": "Um roteador moderno e minimalista para Cloudflare Workers com TypeScript, response helpers, route groups, CORS e validação built-in.",
   "type": "module",
   "main": "dist/index.js",
@@ -25,6 +25,9 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "clean": "rm -rf dist && mkdir -p dist",
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "lint": "eslint \"src/**/*.ts\" \"test/**/*.ts\"",
+    "lint:fix": "eslint \"src/**/*.ts\" \"test/**/*.ts\" --fix",
     "prepublishOnly": "npm run test && npm run build",
     "version": "npm run build",
     "postversion": "git push && git push --tags"
@@ -80,11 +83,18 @@
     "@cloudflare/workers-types": "^4.20251011.0",
     "@rollup/plugin-typescript": "^12.1.4",
     "@types/jest": "^30.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.55.0",
+    "@typescript-eslint/parser": "^8.55.0",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
     "jest": "^30.2.0",
+    "prettier": "^3.8.1",
     "rollup": "^4.52.4",
     "ts-jest": "^29.4.5",
     "tslib": "^2.8.1",
-    "wrangler": "^4.43.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.55.0",
+    "wrangler": "^4.43.0"
   }
 }
