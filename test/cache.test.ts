@@ -94,7 +94,7 @@ describe('Cache com Invalidação por Versão', () => {
 
     // A lógica de cache no RouterWorkers é um pouco diferente.
     // `await app.get()` vai resolver a response.
-    const getPromise = app.get('/data', handler);
+
     // app.resolve() não deve ser necessário se a rota der match.
     // Vamos analisar a implementação do setCache
     // A response do cache é retornada por `res.send`, que no final das contas seta `this.response`.
