@@ -1,6 +1,6 @@
 {
   "name": "routerworkers",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Um roteador moderno e minimalista para Cloudflare Workers com TypeScript, response helpers, route groups, CORS e validação built-in.",
   "type": "module",
   "main": "dist/index.js",
