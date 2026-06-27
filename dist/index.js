@@ -15,8 +15,8 @@ function getQueryInPathName(search) {
                     return (queries[q[0]] = true);
                 if (value == 'false')
                     return (queries[q[0]] = false);
-                if (!Number.isNaN(Number.parseInt(value)))
-                    return parseInt(value);
+                if (/^-?\d+(\.\d+)?$/.test(value))
+                    return Number(value);
                 if (q[1].includes('[') && q[1].includes(']')) {
                     const array = q[1].replace('[', '').replace(']', '').split(',');
                     const arrayModify = array.map((value) => {
@@ -24,8 +24,8 @@ function getQueryInPathName(search) {
                             return true;
                         if (value == 'false')
                             return false;
-                        if (!Number.isNaN(Number.parseInt(value)))
-                            return parseInt(value);
+                        if (/^-?\d+(\.\d+)?$/.test(value))
+                            return Number(value);
                         if (typeof value == 'string')
                             return value.replaceAll('%27', '').replaceAll('%22', '');
                         return value;
