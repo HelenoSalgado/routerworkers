@@ -1,11 +1,15 @@
 /**
- * Request extendida com propriedades injetadas pelo RouterWorkers
+ * Request estendida e mutável compartilhada entre middlewares, guards e controllers
  */
 export interface Req extends Request {
+  /** Pathname já extraído da URL da requisição */
+  pathname?: string;
   queries?: Record<string, any>;
   params?: Record<string, string>; // Renomeado de 'param' para 'params' (plural, mais intuitivo)
   param?: Record<string, string>; // Mantido para backward compatibility
   bodyJson?: any;
+  /** Permite anexar estados customizados em middlewares (ex: req.session, req.isNativeApp) */
+  [key: string]: any;
 }
 
 /**
@@ -16,9 +20,9 @@ export interface Res {
   redirect: (url: string | URL, status?: number) => void;
 
   // Response helpers (Fase 3)
-  ok: (data: any) => void;
-  created: (data: any, location?: string) => void;
-  accepted: (data?: any) => void;
+  ok: <T = any>(data: T) => void;
+  created: <T = any>(data: T, location?: string) => void;
+  accepted: <T = any>(data?: T) => void;
   noContent: () => void;
   badRequest: (error: string | { error: string; details?: any }) => void;
   unauthorized: (error?: string) => void;
@@ -27,9 +31,15 @@ export interface Res {
   conflict: (error: string | { error: string; details?: any }) => void;
   unprocessable: (errors: any) => void;
   serverError: (error?: string) => void;
-  json: (data: any, status?: number) => void;
+  json: <T = any>(data: T, status?: number) => void;
   html: (content: string, status?: number) => void;
   text: (content: string, status?: number) => void;
+
+  // Streaming, Headers e Cache Helpers (v1.2.3)
+  stream: (stream: ReadableStream, config?: ResponseInit) => void;
+  sse: (stream: ReadableStream, headers?: Record<string, string>) => void;
+  setHeader: (name: string, value: string) => void;
+  removeCache: (pathname?: string) => Promise<void>;
 }
 
 /**

@@ -70,9 +70,11 @@ describe('Cache com Invalidação por Versão', () => {
 
   test('Não deve executar o handler e deve servir do cache na segunda requisição (CACHE HIT)', async () => {
     const request = new Request('http://localhost/data');
-    
+
     // Pre-popula o cache para simular um HIT
-    const cachedResponse = new Response(JSON.stringify({ data: 'cached data' }));
+    const cachedResponse = new Response(
+      JSON.stringify({ data: 'cached data' }),
+    );
     const cacheKey = 'http://localhost/data?v=v1.0.0';
     cacheStore.set(cacheKey, cachedResponse);
 
@@ -83,7 +85,7 @@ describe('Cache com Invalidação por Versão', () => {
     });
 
     await app.get('/data', handler);
-    
+
     // O routerworkers usa o res.send para retornar o cache, então a response não é setada diretamente
     // Temos que chamar resolve() para que o router encontre o cache
     const response = app.resolve();
@@ -101,14 +103,14 @@ describe('Cache com Invalidação por Versão', () => {
     // Então, `app.resolve()` deve funcionar.
 
     expect(response.status).toBe(200);
-    
+
     // 1. O handler da rota NÃO foi chamado
     expect(handler).not.toHaveBeenCalled();
 
     // 2. O cache foi lido
     expect(mockCache.default.match).toHaveBeenCalledTimes(1);
     expect(mockCache.default.match).toHaveBeenCalledWith(
-        expect.objectContaining({ url: cacheKey })
+      expect.objectContaining({ url: cacheKey }),
     );
 
     // 3. A resposta contém os dados do cache
@@ -118,17 +120,19 @@ describe('Cache com Invalidação por Versão', () => {
 
   test('Deve executar o handler quando a versão do cache muda (CACHE INVALIDATION)', async () => {
     // Pre-popula o cache com a versão antiga
-    const oldCachedResponse = new Response(JSON.stringify({ data: 'cached data v1' }));
+    const oldCachedResponse = new Response(
+      JSON.stringify({ data: 'cached data v1' }),
+    );
     const oldCacheKey = 'http://localhost/data?v=v1.0.0';
     cacheStore.set(oldCacheKey, oldCachedResponse);
-    
+
     // Cria uma nova request com uma nova configuração de versão
     const newCacheConfig: ConfigWorker = {
-        ...cacheConfig,
-        cache: {
-            ...cacheConfig.cache!,
-            version: 'v1.0.1', // Nova versão
-        }
+      ...cacheConfig,
+      cache: {
+        ...cacheConfig.cache!,
+        version: 'v1.0.1', // Nova versão
+      },
     };
     const request = new Request('http://localhost/data');
     const app = new RouterWorkers(request, newCacheConfig);
@@ -141,22 +145,22 @@ describe('Cache com Invalidação por Versão', () => {
 
     const response = app.resolve();
     expect(response.status).toBe(200);
-    
+
     // 1. O handler foi chamado, pois a versão mudou
     expect(handler).toHaveBeenCalledTimes(1);
 
     // 2. O cache foi consultado com a nova chave
     const newCacheKey = 'http://localhost/data?v=v1.0.1';
     expect(mockCache.default.match).toHaveBeenCalledWith(
-        expect.objectContaining({ url: newCacheKey })
+      expect.objectContaining({ url: newCacheKey }),
     );
-    
+
     // 3. O novo resultado foi salvo no cache
     expect(mockCache.default.put).toHaveBeenCalledWith(
-        expect.objectContaining({ url: newCacheKey }),
-        expect.any(Response)
+      expect.objectContaining({ url: newCacheKey }),
+      expect.any(Response),
     );
-    
+
     // 4. A resposta contém os novos dados ao vivo
     const data = await response.json();
     expect(data).toEqual({ data: 'live data v2' });

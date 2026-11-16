@@ -97,6 +97,7 @@ export function cors(options: CorsOptions = {}): Middleware {
     if (req.method === 'OPTIONS') {
       const headers: Record<string, string> = {
         ...(allowOrigin ? { 'Access-Control-Allow-Origin': allowOrigin } : {}),
+        ...(origin !== '*' ? { Vary: 'Origin' } : {}),
         'Access-Control-Allow-Methods': methods.join(', '),
         'Access-Control-Allow-Headers': allowedHeaders.join(', '),
         'Access-Control-Max-Age': String(maxAge),
@@ -114,6 +115,7 @@ export function cors(options: CorsOptions = {}): Middleware {
     // Guardamos as configs para aplicar depois quando a response for criada
     (req as any).__corsHeaders = {
       ...(allowOrigin ? { 'Access-Control-Allow-Origin': allowOrigin } : {}),
+      ...(origin !== '*' ? { Vary: 'Origin' } : {}),
       ...(credentials && allowOrigin
         ? { 'Access-Control-Allow-Credentials': 'true' }
         : {}),

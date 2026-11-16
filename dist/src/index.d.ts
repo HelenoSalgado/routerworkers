@@ -1,11 +1,16 @@
-import { Args, ConfigWorker, Req, Res, ErrorHandler, NotFoundHandler, Middleware, RouteHandler } from '../types/index';
+import { Args, Caches, ConfigWorker, DefaultResponseType, Req, Res, ErrorHandler, NotFoundHandler, Middleware, RouteHandler } from '../types/index';
+import { RouteParser, RouteMatch, matchStaticPath, safeDecodeURIComponent } from './utils/routeParser';
+import { AssetFetcher, AssetsGuard, AssetsOptions } from './utils/assets';
 export { validate, schemas, ValidationError } from './utils/validator';
 export type { ValidationRule, ValidationSchema, ValidateConfig, } from './utils/validator';
 export { cors, corsDevMode, corsProduction } from './middlewares/cors';
 export type { CorsOptions } from './middlewares/cors';
+export { securityHeaders } from './middlewares/securityHeaders';
+export type { SecurityHeadersOptions } from './middlewares/securityHeaders';
 export { group, RouteGroup } from './utils/routeGroup';
 export type { RouteGroupConfig } from './utils/routeGroup';
-export type { DefaultResponseType } from '../types/index';
+export { RouteParser, matchStaticPath, safeDecodeURIComponent };
+export type { RouteMatch, AssetFetcher, AssetsGuard, AssetsOptions, Args, Caches, ConfigWorker, DefaultResponseType, Req, Res, ErrorHandler, NotFoundHandler, Middleware, RouteHandler, };
 export declare class RouterWorkers {
     private method;
     private url;
@@ -13,6 +18,7 @@ export declare class RouterWorkers {
     private config?;
     private resolved;
     private routeParsers;
+    private pendingHeaders;
     private errorHandler?;
     private notFoundHandler?;
     req: Req;
@@ -36,7 +42,14 @@ export declare class RouterWorkers {
     get(...args: Args): Promise<void>;
     post(...args: Args): Promise<void>;
     put(...args: Args): Promise<void>;
+    patch(...args: Args): Promise<void>;
     delete(...args: Args): Promise<void>;
+    head(...args: Args): Promise<void>;
+    /**
+     * Serve arquivos estáticos via binding `env.ASSETS` do Cloudflare Workers
+     * Suporta filtros de prefixo, Cache-Control automático, headers customizados e guards de autenticação
+     */
+    assets(binding?: AssetFetcher, options?: AssetsOptions): Promise<void>;
     /**
      * Verifica se o pathname da requisição corresponde à rota
      * Suporta rotas aninhadas: /api/users/:userId/posts/:postId
@@ -55,7 +68,8 @@ export declare class RouterWorkers {
      */
     private handleError;
     setCache(callback: RouteHandler): Promise<void>;
-    removeCache(pathname: string): Promise<void>;
+    private matchesCacheConfig;
+    removeCache(pathname?: string): Promise<void>;
     /**
      * Resolve e retorna a Response final
      * Deve ser chamado como último método (return app.resolve())

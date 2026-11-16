@@ -20,7 +20,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "npm run clean && rollup -c && tsc --emitDeclarationOnly",
+    "build": "npm run clean && rollup -c && tsc --emitDeclarationOnly && printf \"export * from './src/index';\\n\" > dist/index.d.ts",
     "dev": "rollup -c --watch",
     "test": "jest",
     "test:watch": "jest --watch",

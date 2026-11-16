@@ -3,7 +3,7 @@
  * Permite agrupar rotas com prefixos e middlewares compartilhados
  */
 import type { RouterWorkers } from '../index';
-import type { Middleware } from '../../types/index';
+import type { Middleware, RouteHandler } from '../../types/index';
 /**
  * Configuração de um grupo de rotas
  */
@@ -40,19 +40,27 @@ export declare class RouteGroup {
     /**
      * Registra rota GET no grupo
      */
-    get(path: string, ...args: any[]): Promise<void>;
+    get(path: string, ...args: [...Middleware[], RouteHandler]): Promise<void>;
     /**
      * Registra rota POST no grupo
      */
-    post(path: string, ...args: any[]): Promise<void>;
+    post(path: string, ...args: [...Middleware[], RouteHandler]): Promise<void>;
     /**
      * Registra rota PUT no grupo
      */
-    put(path: string, ...args: any[]): Promise<void>;
+    put(path: string, ...args: [...Middleware[], RouteHandler]): Promise<void>;
+    /**
+     * Registra rota PATCH no grupo
+     */
+    patch(path: string, ...args: [...Middleware[], RouteHandler]): Promise<void>;
     /**
      * Registra rota DELETE no grupo
      */
-    delete(path: string, ...args: any[]): Promise<void>;
+    delete(path: string, ...args: [...Middleware[], RouteHandler]): Promise<void>;
+    /**
+     * Registra rota HEAD no grupo
+     */
+    head(path: string, ...args: [...Middleware[], RouteHandler]): Promise<void>;
     /**
      * Cria um subgrupo aninhado
      */

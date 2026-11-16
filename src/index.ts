@@ -2,6 +2,7 @@ import {
   Args,
   Caches,
   ConfigWorker,
+  DefaultResponseType,
   Req,
   Res,
   ErrorHandler,
@@ -10,7 +11,18 @@ import {
   RouteHandler,
 } from '../types/index';
 import { getQueryInPathName } from './utils/getQueries';
-import { RouteParser, matchStaticPath } from './utils/routeParser';
+import {
+  RouteParser,
+  RouteMatch,
+  matchStaticPath,
+  safeDecodeURIComponent,
+} from './utils/routeParser';
+import {
+  AssetFetcher,
+  AssetsGuard,
+  AssetsOptions,
+  handleStaticAssets,
+} from './utils/assets';
 
 // Exportar validador built-in
 export { validate, schemas, ValidationError } from './utils/validator';
@@ -20,16 +32,92 @@ export type {
   ValidateConfig,
 } from './utils/validator';
 
-// Exportar CORS middleware
+// Exportar CORS e Security Headers middlewares
 export { cors, corsDevMode, corsProduction } from './middlewares/cors';
 export type { CorsOptions } from './middlewares/cors';
+export { securityHeaders } from './middlewares/securityHeaders';
+export type { SecurityHeadersOptions } from './middlewares/securityHeaders';
 
 // Exportar Route Groups
 export { group, RouteGroup } from './utils/routeGroup';
 export type { RouteGroupConfig } from './utils/routeGroup';
-export type { DefaultResponseType } from '../types/index';
+
+// Exportar utilitários de rota e tipos públicos
+export { RouteParser, matchStaticPath, safeDecodeURIComponent };
+export type {
+  RouteMatch,
+  AssetFetcher,
+  AssetsGuard,
+  AssetsOptions,
+  Args,
+  Caches,
+  ConfigWorker,
+  DefaultResponseType,
+  Req,
+  Res,
+  ErrorHandler,
+  NotFoundHandler,
+  Middleware,
+  RouteHandler,
+};
 
 declare const caches: Caches;
+
+function isNativeBodyInit(data: unknown): boolean {
+  if (!data || typeof data !== 'object') return false;
+  if (typeof ReadableStream !== 'undefined' && data instanceof ReadableStream) {
+    return true;
+  }
+  if (typeof Blob !== 'undefined' && data instanceof Blob) {
+    return true;
+  }
+  if (data instanceof ArrayBuffer || ArrayBuffer.isView(data)) {
+    return true;
+  }
+  if (typeof FormData !== 'undefined' && data instanceof FormData) {
+    return true;
+  }
+  if (
+    typeof URLSearchParams !== 'undefined' &&
+    data instanceof URLSearchParams
+  ) {
+    return true;
+  }
+  return false;
+}
+
+function mergeHeaderValue(
+  headers: Headers,
+  key: string,
+  value: string,
+  overwrite: boolean,
+): void {
+  if (key.toLowerCase() === 'vary') {
+    const existing = headers.get('Vary');
+    if (!existing) {
+      headers.set('Vary', value);
+      return;
+    }
+    const parts = existing
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
+    for (const item of value
+      .split(',')
+      .map((v) => v.trim())
+      .filter(Boolean)) {
+      if (!parts.some((p) => p.toLowerCase() === item.toLowerCase())) {
+        parts.push(item);
+      }
+    }
+    headers.set('Vary', parts.join(', '));
+    return;
+  }
+
+  if (overwrite || !headers.has(key)) {
+    headers.set(key, value);
+  }
+}
 
 export class RouterWorkers {
   private method: string;
@@ -38,6 +126,7 @@ export class RouterWorkers {
   private config?: ConfigWorker;
   private resolved: boolean = false;
   private routeParsers: Map<string, RouteParser> = new Map(); // Cache de parsers
+  private pendingHeaders: Record<string, string> = {};
   private errorHandler?: ErrorHandler;
   private notFoundHandler?: NotFoundHandler;
 
@@ -45,7 +134,11 @@ export class RouterWorkers {
   public response!: Response; // Será inicializado no res.send ou res.redirect
   public res: Res = {
     send: (data: any, config?: ResponseInit) => {
-      if (data !== null && typeof data == 'object') {
+      if (typeof Response !== 'undefined' && data instanceof Response) {
+        this.response = data;
+      } else if (isNativeBodyInit(data)) {
+        this.response = new Response(data as BodyInit, config);
+      } else if (data !== null && typeof data == 'object') {
         this.response = Response.json(data, config);
       } else if (
         typeof data === 'string' &&
@@ -66,18 +159,18 @@ export class RouterWorkers {
 
     // ✨ Response Helpers - Fase 3
 
-    ok: (data: any) => {
+    ok: <T = any>(data: T) => {
       this.response = Response.json(data, { status: 200 });
       this.resolved = true;
     },
 
-    created: (data: any, location?: string) => {
+    created: <T = any>(data: T, location?: string) => {
       const headers = location ? { Location: location } : undefined;
       this.response = Response.json(data, { status: 201, headers });
       this.resolved = true;
     },
 
-    accepted: (data?: any) => {
+    accepted: <T = any>(data?: T) => {
       this.response = Response.json(data || { message: 'Accepted' }, {
         status: 202,
       });
@@ -152,7 +245,7 @@ export class RouterWorkers {
       this.resolved = true;
     },
 
-    json: (data: any, status: number = 200) => {
+    json: <T = any>(data: T, status: number = 200) => {
       this.response = Response.json(data, { status });
       this.resolved = true;
     },
@@ -172,6 +265,36 @@ export class RouterWorkers {
       });
       this.resolved = true;
     },
+
+    stream: (stream: ReadableStream, config?: ResponseInit) => {
+      this.response = new Response(stream, {
+        status: config?.status ?? 200,
+        statusText: config?.statusText,
+        headers: config?.headers,
+      });
+      this.resolved = true;
+    },
+
+    sse: (stream: ReadableStream, headers?: Record<string, string>) => {
+      this.response = new Response(stream, {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/event-stream; charset=utf-8',
+          'Cache-Control': 'no-cache, no-transform',
+          Connection: 'keep-alive',
+          ...(headers || {}),
+        },
+      });
+      this.resolved = true;
+    },
+
+    setHeader: (name: string, value: string) => {
+      this.pendingHeaders[name] = value;
+    },
+
+    removeCache: async (pathname?: string) => {
+      await this.removeCache(pathname);
+    },
   };
 
   constructor(request: Request, config?: ConfigWorker) {
@@ -179,6 +302,7 @@ export class RouterWorkers {
     this.method = request.method;
     this.config = config;
     this.req = new Request(request) as Req;
+    this.req.pathname = this.url.pathname;
     this.req.queries = getQueryInPathName(this.url.search);
   }
 
@@ -279,6 +403,23 @@ export class RouterWorkers {
     }
   }
 
+  async patch(...args: Args) {
+    if (!this.resolved && this.method == 'PATCH' && this.isPathName(args[0])) {
+      try {
+        this.req.bodyJson = await this.req.json();
+      } catch {
+        this.req.bodyJson = undefined;
+      }
+      await this.foreachMiddleware(args);
+      if (this.resolved) return;
+      await this.removeCache(args[0]);
+      const cbResult = args[args.length - 1] as RouteHandler;
+      return await this.executeHandler(cbResult);
+    } else {
+      this.incrementRoute.push(args[0]);
+    }
+  }
+
   async delete(...args: Args) {
     if (!this.resolved && this.method == 'DELETE' && this.isPathName(args[0])) {
       await this.foreachMiddleware(args);
@@ -288,6 +429,41 @@ export class RouterWorkers {
       return await this.executeHandler(cbResult);
     } else {
       this.incrementRoute.push(args[0]);
+    }
+  }
+
+  async head(...args: Args) {
+    if (!this.resolved && this.method == 'HEAD' && this.isPathName(args[0])) {
+      await this.foreachMiddleware(args);
+      if (this.resolved) return;
+      const cbResult = args[args.length - 1] as RouteHandler;
+      return await this.executeHandler(cbResult);
+    } else {
+      this.incrementRoute.push(args[0]);
+    }
+  }
+
+  /**
+   * Serve arquivos estáticos via binding `env.ASSETS` do Cloudflare Workers
+   * Suporta filtros de prefixo, Cache-Control automático, headers customizados e guards de autenticação
+   */
+  async assets(binding?: AssetFetcher, options?: AssetsOptions): Promise<void> {
+    if (this.resolved || !binding) return;
+    try {
+      const assetResponse = await handleStaticAssets(
+        this.req,
+        this.res,
+        this.url.pathname,
+        () => this.resolved,
+        binding,
+        options,
+      );
+      if (assetResponse && !this.resolved) {
+        this.response = assetResponse;
+        this.resolved = true;
+      }
+    } catch (error) {
+      await this.handleError(error);
     }
   }
 
@@ -395,21 +571,58 @@ export class RouterWorkers {
       return;
     }
 
-    // Retorna resposta em cache
-    return this.res.send(await response.json());
+    // Preserva status, body e headers originais da resposta em cache
+    this.response = response.clone();
+    this.resolved = true;
+    return;
   }
 
-  async removeCache(pathname: string) {
-    if (
-      this.config?.cache?.pathname &&
-      this.config.cache.pathname.length > 0 &&
-      this.config.cache.pathname.some(
-        (entry) => entry === pathname || entry.split(',')[0] === pathname,
-      )
-    ) {
-      const cacheUrl = this.config?.cache?.version
-        ? `${this.req.url}?v=${this.config.cache.version}`
+  private matchesCacheConfig(targetPath: string): boolean {
+    const entries = this.config?.cache?.pathname;
+    if (!entries || entries.length === 0) return false;
+
+    for (const rawEntry of entries) {
+      const entryPath = rawEntry.includes(',')
+        ? rawEntry.split(',')[0]
+        : rawEntry;
+
+      if (entryPath === targetPath) {
+        return true;
+      }
+
+      if (!entryPath.includes(':')) {
+        if (matchStaticPath(targetPath, entryPath)) {
+          return true;
+        }
+      } else {
+        if (!this.routeParsers.has(entryPath)) {
+          this.routeParsers.set(entryPath, new RouteParser(entryPath));
+        }
+        if (this.routeParsers.get(entryPath)!.match(targetPath).matched) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  async removeCache(pathname?: string) {
+    const targetPath = pathname || this.url.pathname;
+
+    if (this.matchesCacheConfig(targetPath)) {
+      const isConcreteTarget =
+        !targetPath.includes(':') && targetPath !== this.url.pathname;
+      const normalizedPath = targetPath.startsWith('/')
+        ? targetPath
+        : `/${targetPath}`;
+      const baseUrl = isConcreteTarget
+        ? `${this.url.origin}${normalizedPath}`
         : this.req.url;
+
+      const cacheUrl = this.config?.cache?.version
+        ? `${baseUrl}?v=${this.config.cache.version}`
+        : baseUrl;
       const cacheKey = new Request(cacheUrl, { method: 'GET' });
       await caches.default.delete(cacheKey);
     }
@@ -447,19 +660,27 @@ export class RouterWorkers {
     const corsHeaders = (this.req as any).__corsHeaders as
       | Record<string, string>
       | undefined;
-    if (corsHeaders && this.response) {
+    const hasPendingHeaders = Object.keys(this.pendingHeaders).length > 0;
+
+    if ((corsHeaders || hasPendingHeaders) && this.response) {
       try {
-        for (const [key, value] of Object.entries(corsHeaders)) {
-          if (!this.response.headers.has(key)) {
-            this.response.headers.set(key, value);
+        for (const [key, value] of Object.entries(this.pendingHeaders)) {
+          mergeHeaderValue(this.response.headers, key, value, true);
+        }
+        if (corsHeaders) {
+          for (const [key, value] of Object.entries(corsHeaders)) {
+            mergeHeaderValue(this.response.headers, key, value, false);
           }
         }
       } catch {
         // Caso os headers da Response sejam imutáveis (ex: Response.redirect), clona com headers mutáveis
         const clonedHeaders = new Headers(this.response.headers);
-        for (const [key, value] of Object.entries(corsHeaders)) {
-          if (!clonedHeaders.has(key)) {
-            clonedHeaders.set(key, value);
+        for (const [key, value] of Object.entries(this.pendingHeaders)) {
+          mergeHeaderValue(clonedHeaders, key, value, true);
+        }
+        if (corsHeaders) {
+          for (const [key, value] of Object.entries(corsHeaders)) {
+            mergeHeaderValue(clonedHeaders, key, value, false);
           }
         }
         this.response = new Response(this.response.body, {
@@ -473,9 +694,3 @@ export class RouterWorkers {
     return this.response as Response;
   }
 }
-
-// Middlewares
-// export function expurgCache(req: Req, res: Res){
-//     let cacheKey = new Request(req.url, {method: 'GET'});
-//     caches.default.delete(cacheKey);
-// }

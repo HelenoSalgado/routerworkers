@@ -479,9 +479,14 @@ await app.get('/erro', (_req, res) => {
 
 ---
 
-## 📦 Notas da Versão `1.2.2` (Compatibilidade e Segurança)
+## 📦 Notas da Versão `1.2.3` (Melhorias Arquiteturais, Assets, SSE e Compatibilidade)
 
-- **Matching de rotas e RegExp (Issue #4):** Rotas agora são compiladas e validadas segmento a segmento, escapando metacaracteres de expressão regular (`.`, `+`, `*`, `?`, `()`, `[]`, `|`, etc.), suportando caminhos não-ASCII (`/café`, `/café/:id`) e tratando sequências percentuais malformadas (`%E0%A4%A`) com retorno seguro `404` em vez de lançar `URIError`.
+- **Static Assets nativo (`await app.assets(env.ASSETS, options)`):** Serve arquivos estáticos do binding `ASSETS` do Cloudflare Workers com suporte a `includePrefixes`, `excludePrefixes`, `cacheControl` automático em respostas `2xx`, `headers` customizados e `guards` de autenticação por prefixo (ex.: proteger `/content/*`).
+- **Streaming SSE e payloads binários (`res.sse`, `res.stream` e `res.send`):** `res.sse(stream)` configura automaticamente os headers de Server-Sent Events; `res.stream(stream, config)` e `res.send(data, config)` preservam `ReadableStream`, `Blob`, `ArrayBuffer`, `Uint8Array`, `FormData` e `Response` sem convertê-los indevidamente via `Response.json()`.
+- **Cache dinâmico e cross-route (`res.removeCache` e `app.removeCache`):** `removeCache` agora reconhece rotas parametrizadas configuradas em `cache.pathname` (ex.: `'/api/articles/:id/ratings,60'`), constrói a URL alvo correta ao invalidar outra rota (ex.: invalidar `'/api/notifications'` a partir de `POST /api/notifications/:id/dismiss`) e preserva headers originais em `CACHE HIT`.
+- **Security Headers, `Vary: Origin` e `res.setHeader`:** Novo middleware `securityHeaders()`, adição automática de `Vary: Origin` no `cors()` quando a origem não é `'*'`, e método `res.setHeader(name, value)`.
+- **Propriedade `req.pathname`, métodos `patch()` / `head()` e `dist/index.d.ts`:** `req.pathname` já vem preenchido na instância mutável `req`; suporte a `app.patch()` e `app.head()` (inclusive em `RouteGroup`); e exportação completa de tipos na raiz `dist/index.d.ts`.
+- **Matching de rotas e RegExp (Issue #4 / `1.2.2`):** Rotas compiladas e validadas segmento a segmento, escapando metacaracteres de expressão regular (`.`, `+`, `*`, `?`, `()`, `[]`, `|`, etc.), suportando caminhos não-ASCII (`/café`, `/café/:id`) e tratando sequências percentuais malformadas (`%E0%A4%A`) com retorno seguro `404` em vez de lançar `URIError`.
 - **Nomes de parâmetros de rota (`/:([a-zA-Z_]\w*)/g`):** Parâmetros dinâmicos devem iniciar com letra ou underscore (ex.: `:id`, `:userId`, `:_slug`), permitindo que dois-pontos seguidos de dígitos em segmentos de URL (ex.: `/time/12:00`) sejam tratados literalmente.
 - **CORS restritivo (`corsProduction` / `origin` por lista ou função):** Origens não autorizadas não recebem mais fallback `*`, e os cabeçalhos CORS configurados são aplicados automaticamente na `Response` final em `app.resolve()`.
 - **Validação obrigatória (`validate`):** Campos marcados com `required: true` em `body` ou `queries` agora são validados mesmo quando a requisição chega com corpo vazio ou sem query string.

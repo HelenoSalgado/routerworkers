@@ -4,7 +4,7 @@
  */
 
 import type { RouterWorkers } from '../index';
-import type { Middleware } from '../../types/index';
+import type { Middleware, RouteHandler } from '../../types/index';
 
 /**
  * Configuração de um grupo de rotas
@@ -66,10 +66,13 @@ export class RouteGroup {
   /**
    * Registra rota GET no grupo
    */
-  async get(path: string, ...args: any[]): Promise<void> {
+  async get(
+    path: string,
+    ...args: [...Middleware[], RouteHandler]
+  ): Promise<void> {
     const fullPath = this.prefixPath(path);
-    const handler = args[args.length - 1];
-    const routeMiddlewares = args.slice(0, -1);
+    const handler = args[args.length - 1] as RouteHandler;
+    const routeMiddlewares = args.slice(0, -1) as Middleware[];
     const allMiddlewares = this.combineMiddlewares(routeMiddlewares);
 
     await this.app.get(fullPath, ...allMiddlewares, handler);
@@ -78,10 +81,13 @@ export class RouteGroup {
   /**
    * Registra rota POST no grupo
    */
-  async post(path: string, ...args: any[]): Promise<void> {
+  async post(
+    path: string,
+    ...args: [...Middleware[], RouteHandler]
+  ): Promise<void> {
     const fullPath = this.prefixPath(path);
-    const handler = args[args.length - 1];
-    const routeMiddlewares = args.slice(0, -1);
+    const handler = args[args.length - 1] as RouteHandler;
+    const routeMiddlewares = args.slice(0, -1) as Middleware[];
     const allMiddlewares = this.combineMiddlewares(routeMiddlewares);
 
     await this.app.post(fullPath, ...allMiddlewares, handler);
@@ -90,25 +96,61 @@ export class RouteGroup {
   /**
    * Registra rota PUT no grupo
    */
-  async put(path: string, ...args: any[]): Promise<void> {
+  async put(
+    path: string,
+    ...args: [...Middleware[], RouteHandler]
+  ): Promise<void> {
     const fullPath = this.prefixPath(path);
-    const handler = args[args.length - 1];
-    const routeMiddlewares = args.slice(0, -1);
+    const handler = args[args.length - 1] as RouteHandler;
+    const routeMiddlewares = args.slice(0, -1) as Middleware[];
     const allMiddlewares = this.combineMiddlewares(routeMiddlewares);
 
     await this.app.put(fullPath, ...allMiddlewares, handler);
   }
 
   /**
+   * Registra rota PATCH no grupo
+   */
+  async patch(
+    path: string,
+    ...args: [...Middleware[], RouteHandler]
+  ): Promise<void> {
+    const fullPath = this.prefixPath(path);
+    const handler = args[args.length - 1] as RouteHandler;
+    const routeMiddlewares = args.slice(0, -1) as Middleware[];
+    const allMiddlewares = this.combineMiddlewares(routeMiddlewares);
+
+    await this.app.patch(fullPath, ...allMiddlewares, handler);
+  }
+
+  /**
    * Registra rota DELETE no grupo
    */
-  async delete(path: string, ...args: any[]): Promise<void> {
+  async delete(
+    path: string,
+    ...args: [...Middleware[], RouteHandler]
+  ): Promise<void> {
     const fullPath = this.prefixPath(path);
-    const handler = args[args.length - 1];
-    const routeMiddlewares = args.slice(0, -1);
+    const handler = args[args.length - 1] as RouteHandler;
+    const routeMiddlewares = args.slice(0, -1) as Middleware[];
     const allMiddlewares = this.combineMiddlewares(routeMiddlewares);
 
     await this.app.delete(fullPath, ...allMiddlewares, handler);
+  }
+
+  /**
+   * Registra rota HEAD no grupo
+   */
+  async head(
+    path: string,
+    ...args: [...Middleware[], RouteHandler]
+  ): Promise<void> {
+    const fullPath = this.prefixPath(path);
+    const handler = args[args.length - 1] as RouteHandler;
+    const routeMiddlewares = args.slice(0, -1) as Middleware[];
+    const allMiddlewares = this.combineMiddlewares(routeMiddlewares);
+
+    await this.app.head(fullPath, ...allMiddlewares, handler);
   }
 
   /**
