@@ -1,0 +1,36 @@
+name: Deep Fuzzing
+
+on:
+  schedule:
+    # Executa automaticamente toda madrugada (03:00 UTC) sem pesar na máquina local
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+    inputs:
+      runs:
+        description: 'Número de iterações por propriedade (fuzz runs)'
+        required: true
+        default: '10000'
+        type: string
+
+jobs:
+  deep-fuzz:
+    name: Heavy Fuzz Testing
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Heavy Property-Based Fuzzing
+        env:
+          FUZZ_RUNS: ${{ github.event.inputs.runs || '10000' }}
+        run: npm run test:fuzz
