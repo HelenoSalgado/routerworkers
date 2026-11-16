@@ -459,6 +459,35 @@ Com essa configuração, a cada novo `wrangler deploy`, o `deploymentId` muda, o
 
 ---
 
+### `defaultResponseType` no `ConfigWorker`
+
+Para APIs JSON que utilizam `res.send('mensagem')`, é possível configurar `defaultResponseType: 'json'` para converter automaticamente strings em payloads JSON estruturados (`{ message: data }` para status `< 400` e `{ error: data }` para status `>= 400`):
+
+```typescript
+const app = new RouterWorkers(request, { defaultResponseType: 'json' });
+
+await app.get('/status', (_req, res) => {
+    res.send('Serviço operacional'); // 200 -> { "message": "Serviço operacional" }
+});
+
+await app.get('/erro', (_req, res) => {
+    res.send('Acesso negado', { status: 403 }); // 403 -> { "error": "Acesso negado" }
+});
+```
+
+> **Compatibilidade:** Quando `defaultResponseType` é omitido (padrão), `res.send('texto')` mantém o comportamento original retornando texto plano (`text/plain`).
+
+---
+
+## 📦 Notas da Versão `1.2.2` (Compatibilidade e Segurança)
+
+- **Matching de rotas e RegExp (Issue #4):** Rotas agora são compiladas e validadas segmento a segmento, escapando metacaracteres de expressão regular (`.`, `+`, `*`, `?`, `()`, `[]`, `|`, etc.), suportando caminhos não-ASCII (`/café`, `/café/:id`) e tratando sequências percentuais malformadas (`%E0%A4%A`) com retorno seguro `404` em vez de lançar `URIError`.
+- **Nomes de parâmetros de rota (`/:([a-zA-Z_]\w*)/g`):** Parâmetros dinâmicos devem iniciar com letra ou underscore (ex.: `:id`, `:userId`, `:_slug`), permitindo que dois-pontos seguidos de dígitos em segmentos de URL (ex.: `/time/12:00`) sejam tratados literalmente.
+- **CORS restritivo (`corsProduction` / `origin` por lista ou função):** Origens não autorizadas não recebem mais fallback `*`, e os cabeçalhos CORS configurados são aplicados automaticamente na `Response` final em `app.resolve()`.
+- **Validação obrigatória (`validate`):** Campos marcados com `required: true` em `body` ou `queries` agora são validados mesmo quando a requisição chega com corpo vazio ou sem query string.
+
+---
+
 ## 📝 Exemplos
 
 Veja a pasta [`examples/`](./examples) para exemplos completos:
