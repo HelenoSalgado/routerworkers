@@ -318,20 +318,20 @@ export function validate(config: ValidateConfig): Middleware {
     const allErrors: ValidationError[] = [];
 
     // Valida body
-    if (config.body && req.bodyJson) {
-      const errors = validateObject(req.bodyJson, config.body);
+    if (config.body) {
+      const errors = validateObject(req.bodyJson ?? {}, config.body);
       allErrors.push(...errors);
     }
 
     // Valida params
-    if (config.params && req.params) {
-      const errors = validateObject(req.params, config.params);
+    if (config.params) {
+      const errors = validateObject(req.params ?? {}, config.params);
       allErrors.push(...errors);
     }
 
     // Valida queries
-    if (config.queries && req.queries) {
-      const errors = validateObject(req.queries, config.queries);
+    if (config.queries) {
+      const errors = validateObject(req.queries ?? {}, config.queries);
       allErrors.push(...errors);
     }
 

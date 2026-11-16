@@ -5,6 +5,7 @@ export { cors, corsDevMode, corsProduction } from './middlewares/cors';
 export type { CorsOptions } from './middlewares/cors';
 export { group, RouteGroup } from './utils/routeGroup';
 export type { RouteGroupConfig } from './utils/routeGroup';
+export type { DefaultResponseType } from '../types/index';
 export declare class RouterWorkers {
     private method;
     private url;

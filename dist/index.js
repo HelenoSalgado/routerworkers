@@ -1,82 +1,213 @@
-function getQueryInPathName(search) {
-    if (search.includes('?')) {
-        const preQueries = search
-            .replaceAll('%5B', '[')
-            .replaceAll('%5D', ']')
-            .replaceAll('%20', ' ')
-            .slice(1)
-            .toString()
-            .split('&');
-        const queries = {};
-        preQueries.forEach((query) => {
-            const q = query.split('=');
-            function transformQueries(value) {
-                if (value == 'true')
-                    return (queries[q[0]] = true);
-                if (value == 'false')
-                    return (queries[q[0]] = false);
-                if (/^-?\d+(\.\d+)?$/.test(value))
-                    return Number(value);
-                if (q[1].includes('[') && q[1].includes(']')) {
-                    const array = q[1].replace('[', '').replace(']', '').split(',');
-                    const arrayModify = array.map((value) => {
-                        if (value == 'true')
-                            return true;
-                        if (value == 'false')
-                            return false;
-                        if (/^-?\d+(\.\d+)?$/.test(value))
-                            return Number(value);
-                        if (typeof value == 'string')
-                            return value.replaceAll('%27', '').replaceAll('%22', '');
-                        return value;
-                    });
-                    return arrayModify;
-                }
-                if (typeof value == 'string')
-                    return value.replaceAll('%27', '').replaceAll('%22', '');
-                return value;
-            }
-            queries[q[0]] = transformQueries(q[1]);
-        });
-        return queries;
+/**
+ * RouteParser - Parser seguro e eficiente para rotas estáticas e parametrizadas
+ * Opera segmento a segmento com suporte a UTF-8, escape de RegExp e proteção contra URIError
+ */
+const REGEX_META_CHARS = /[.*+?^${}()|[\]\\]/g;
+const PARAM_PATTERN = /:([a-zA-Z_]\w*)/g;
+/**
+ * Escapa todos os metacaracteres de expressão regular em um trecho literal.
+ */
+function escapeRegExp(value) {
+    return value.replace(REGEX_META_CHARS, '\\$&');
+}
+/**
+ * Verifica se uma chave pode causar prototype pollution.
+ */
+function isDangerousKey(key) {
+    return key === '__proto__' || key === 'constructor' || key === 'prototype';
+}
+/**
+ * Decodifica um componente de URI com segurança, retornando null em caso de URIError.
+ */
+function safeDecodeURIComponent(segment) {
+    try {
+        return decodeURIComponent(segment);
     }
-    else {
-        return undefined;
+    catch {
+        return null;
+    }
+}
+/**
+ * Compara um pathname de requisição com uma rota estática (sem parâmetros),
+ * decodificando segmento a segmento para suportar caracteres não-ASCII e
+ * rejeitar sequências percentuais malformadas sem lançar exceções.
+ */
+function matchStaticPath(requestPathname, routePath) {
+    if (requestPathname === routePath) {
+        return true;
+    }
+    const reqSegments = requestPathname.split('/');
+    const routeSegments = routePath.split('/');
+    if (reqSegments.length !== routeSegments.length) {
+        return false;
+    }
+    for (let i = 0; i < routeSegments.length; i++) {
+        const decodedRoute = safeDecodeURIComponent(routeSegments[i]);
+        if (decodedRoute === null) {
+            if (reqSegments[i] !== routeSegments[i]) {
+                return false;
+            }
+            continue;
+        }
+        const decodedReq = safeDecodeURIComponent(reqSegments[i]);
+        if (decodedReq === null || decodedReq !== decodedRoute) {
+            return false;
+        }
+    }
+    return true;
+}
+class RouteParser {
+    segments;
+    constructor(route) {
+        this.segments = route
+            .split('/')
+            .map((segment) => this.compileSegment(segment));
+    }
+    compileSegment(segment) {
+        const paramMatches = Array.from(segment.matchAll(PARAM_PATTERN));
+        if (paramMatches.length === 0) {
+            const decoded = safeDecodeURIComponent(segment);
+            return {
+                kind: 'literal',
+                value: decoded ?? segment,
+                rawOnly: decoded === null,
+            };
+        }
+        if (paramMatches.length === 1 && paramMatches[0][0] === segment) {
+            return {
+                kind: 'param',
+                name: paramMatches[0][1],
+            };
+        }
+        let regexSource = '^';
+        let cursor = 0;
+        const paramNames = [];
+        for (const match of paramMatches) {
+            const matchIndex = match.index ?? 0;
+            if (matchIndex > cursor) {
+                const rawLiteral = segment.slice(cursor, matchIndex);
+                const decodedLiteral = safeDecodeURIComponent(rawLiteral) ?? rawLiteral;
+                regexSource += escapeRegExp(decodedLiteral);
+            }
+            paramNames.push(match[1]);
+            regexSource += '([\\s\\S]+)';
+            cursor = matchIndex + match[0].length;
+        }
+        if (cursor < segment.length) {
+            const rawTrailing = segment.slice(cursor);
+            const decodedTrailing = safeDecodeURIComponent(rawTrailing) ?? rawTrailing;
+            regexSource += escapeRegExp(decodedTrailing);
+        }
+        regexSource += '$';
+        return {
+            kind: 'mixed',
+            pattern: new RegExp(regexSource),
+            paramNames,
+        };
+    }
+    /**
+     * Verifica se o pathname corresponde à rota e extrai parâmetros com segurança.
+     */
+    match(pathname) {
+        const reqSegments = pathname.split('/');
+        if (reqSegments.length !== this.segments.length) {
+            return { matched: false, params: {} };
+        }
+        const params = {};
+        for (let i = 0; i < this.segments.length; i++) {
+            const compiled = this.segments[i];
+            const rawReqSegment = reqSegments[i];
+            if (compiled.kind === 'literal') {
+                if (compiled.rawOnly) {
+                    if (rawReqSegment !== compiled.value) {
+                        return { matched: false, params: {} };
+                    }
+                    continue;
+                }
+                const decodedReq = safeDecodeURIComponent(rawReqSegment);
+                if (decodedReq === null || decodedReq !== compiled.value) {
+                    return { matched: false, params: {} };
+                }
+                continue;
+            }
+            const decodedReq = safeDecodeURIComponent(rawReqSegment);
+            if (decodedReq === null || decodedReq === '') {
+                return { matched: false, params: {} };
+            }
+            if (compiled.kind === 'param') {
+                if (!isDangerousKey(compiled.name)) {
+                    params[compiled.name] = decodedReq;
+                }
+                continue;
+            }
+            const matches = compiled.pattern.exec(decodedReq);
+            if (!matches) {
+                return { matched: false, params: {} };
+            }
+            for (let j = 0; j < compiled.paramNames.length; j++) {
+                const paramName = compiled.paramNames[j];
+                if (!isDangerousKey(paramName)) {
+                    params[paramName] = matches[j + 1];
+                }
+            }
+        }
+        return { matched: true, params };
     }
 }
 
-/**
- * RouteParser - Parser simples e eficiente para rotas aninhadas
- * Converte rotas com parâmetros em regex para matching
- */
-class RouteParser {
-    pattern;
-    paramNames = [];
-    constructor(route) {
-        // Extrai nomes dos parâmetros e cria pattern regex
-        const regexPattern = route
-            .replace(/\//g, '\\/') // Escapa barras
-            .replace(/:(\w+)/g, (_, paramName) => {
-            this.paramNames.push(paramName);
-            return '([^\\/]+)'; // Captura qualquer coisa exceto /
+function parseScalarQueryValue(value) {
+    if (value === 'true')
+        return true;
+    if (value === 'false')
+        return false;
+    if (value !== '' && /^-?\d+(\.\d+)?$/.test(value))
+        return Number(value);
+    return value.replaceAll('%27', '').replaceAll('%22', '');
+}
+function transformQueryValue(rawVal) {
+    const decoded = (safeDecodeURIComponent(rawVal) ?? rawVal)
+        .replaceAll('%5B', '[')
+        .replaceAll('%5D', ']')
+        .replaceAll('%20', ' ');
+    if (decoded.includes('[') && decoded.includes(']')) {
+        const inner = decoded.replace('[', '').replace(']', '');
+        if (inner === '')
+            return [];
+        return inner.split(',').map((item) => {
+            const decodedItem = safeDecodeURIComponent(item) ?? item;
+            return parseScalarQueryValue(decodedItem);
         });
-        this.pattern = new RegExp(`^${regexPattern}$`);
     }
-    /**
-     * Verifica se o pathname corresponde à rota e extrai parâmetros
-     */
-    match(pathname) {
-        const matches = pathname.match(this.pattern);
-        if (!matches) {
-            return { matched: false, params: {} };
+    return parseScalarQueryValue(decoded);
+}
+function getQueryInPathName(search) {
+    if (!search || !search.includes('?')) {
+        return undefined;
+    }
+    const rawSearch = search.slice(search.indexOf('?') + 1);
+    if (!rawSearch) {
+        return undefined;
+    }
+    const pairs = rawSearch.split('&');
+    const queries = {};
+    let hasEntries = false;
+    for (const pair of pairs) {
+        if (!pair)
+            continue;
+        const eqIndex = pair.indexOf('=');
+        const rawKey = eqIndex === -1 ? pair : pair.slice(0, eqIndex);
+        const rawVal = eqIndex === -1 ? '' : pair.slice(eqIndex + 1);
+        const key = (safeDecodeURIComponent(rawKey) ?? rawKey)
+            .replaceAll('%5B', '[')
+            .replaceAll('%5D', ']')
+            .replaceAll('%20', ' ');
+        if (!key || isDangerousKey(key)) {
+            continue;
         }
-        // Mapeia valores capturados para nomes dos parâmetros
-        const params = {};
-        this.paramNames.forEach((name, index) => {
-            params[name] = decodeURIComponent(matches[index + 1]);
-        });
-        return { matched: true, params };
+        queries[key] = transformQueryValue(rawVal);
+        hasEntries = true;
     }
+    return hasEntries ? queries : undefined;
 }
 
 /**
@@ -248,18 +379,18 @@ function validate(config) {
     return async (req, res) => {
         const allErrors = [];
         // Valida body
-        if (config.body && req.bodyJson) {
-            const errors = validateObject(req.bodyJson, config.body);
+        if (config.body) {
+            const errors = validateObject(req.bodyJson ?? {}, config.body);
             allErrors.push(...errors);
         }
         // Valida params
-        if (config.params && req.params) {
-            const errors = validateObject(req.params, config.params);
+        if (config.params) {
+            const errors = validateObject(req.params ?? {}, config.params);
             allErrors.push(...errors);
         }
         // Valida queries
-        if (config.queries && req.queries) {
-            const errors = validateObject(req.queries, config.queries);
+        if (config.queries) {
+            const errors = validateObject(req.queries ?? {}, config.queries);
             allErrors.push(...errors);
         }
         // Se há erros, chama handler customizado ou padrão
@@ -332,7 +463,7 @@ function cors(options = {}) {
     return async (req, res) => {
         const requestOrigin = req.headers.get('Origin') || '';
         // Determinar se a origin é permitida
-        let allowOrigin = '*';
+        let allowOrigin = '';
         if (typeof origin === 'string') {
             allowOrigin = origin;
         }
@@ -349,11 +480,13 @@ function cors(options = {}) {
         // Se a requisição é OPTIONS (preflight), responder diretamente
         if (req.method === 'OPTIONS') {
             const headers = {
-                'Access-Control-Allow-Origin': allowOrigin,
+                ...(allowOrigin ? { 'Access-Control-Allow-Origin': allowOrigin } : {}),
                 'Access-Control-Allow-Methods': methods.join(', '),
                 'Access-Control-Allow-Headers': allowedHeaders.join(', '),
                 'Access-Control-Max-Age': String(maxAge),
-                ...(credentials ? { 'Access-control-Allow-Credentials': 'true' } : {}),
+                ...(credentials && allowOrigin
+                    ? { 'Access-Control-Allow-Credentials': 'true' }
+                    : {}),
             };
             // Responder ao preflight com 204 No Content e os headers corretos
             res.send(null, { status: 204, headers });
@@ -362,9 +495,11 @@ function cors(options = {}) {
         // Para outras requisições, adicionar headers CORS à resposta
         // Guardamos as configs para aplicar depois quando a response for criada
         req.__corsHeaders = {
-            'Access-Control-Allow-Origin': allowOrigin,
-            ...(credentials ? { 'Access-Control-Allow-Credentials': 'true' } : {}),
-            ...(exposedHeaders.length > 0
+            ...(allowOrigin ? { 'Access-Control-Allow-Origin': allowOrigin } : {}),
+            ...(credentials && allowOrigin
+                ? { 'Access-Control-Allow-Credentials': 'true' }
+                : {}),
+            ...(exposedHeaders.length > 0 && allowOrigin
                 ? { 'Access-Control-Expose-Headers': exposedHeaders.join(', ') }
                 : {}),
         };
@@ -427,8 +562,11 @@ class RouteGroup {
         const prefix = this.getFullPrefix();
         if (!prefix)
             return path;
-        // Remove trailing slash do prefix e leading slash do path
-        const cleanPrefix = prefix.replace(/\/$/, '');
+        // Remove trailing slash do prefix e normaliza barra inicial do path
+        const cleanPrefix = prefix.replace(/\/+$/, '');
+        if (!path || path === '/') {
+            return cleanPrefix || '/';
+        }
         const cleanPath = path.startsWith('/') ? path : `/${path}`;
         return `${cleanPrefix}${cleanPath}`;
     }
@@ -476,7 +614,9 @@ class RouteGroup {
      * Cria um subgrupo aninhado
      */
     group(config, callback) {
-        const nestedPrefix = this.getFullPrefix() + (config.prefix || '');
+        const nestedPrefix = config.prefix
+            ? this.prefixPath(config.prefix)
+            : this.getFullPrefix();
         const nestedMiddlewares = [
             ...(this.config.middlewares || []),
             ...(config.middlewares || []),
@@ -521,6 +661,12 @@ class RouterWorkers {
         send: (data, config) => {
             if (data !== null && typeof data == 'object') {
                 this.response = Response.json(data, config);
+            }
+            else if (typeof data === 'string' &&
+                this.config?.defaultResponseType === 'json') {
+                const status = config?.status ?? 200;
+                const payload = status >= 400 ? { error: data } : { message: data };
+                this.response = Response.json(payload, config);
             }
             else {
                 this.response = new Response(data, config);
@@ -616,6 +762,7 @@ class RouterWorkers {
         this.method = request.method;
         this.config = config;
         this.req = new Request(request);
+        this.req.queries = getQueryInPathName(this.url.search);
     }
     /**
      * Registra handler de erro global
@@ -734,25 +881,27 @@ class RouterWorkers {
      * Suporta rotas aninhadas: /api/users/:userId/posts/:postId
      */
     isPathName(path) {
-        // Rota exata (sem parâmetros)
-        if (this.url.pathname === path) {
-            return true;
-        }
-        // Rota com parâmetros - usa RouteParser
-        if (path.includes(':')) {
-            // Reutiliza parser se já existe (performance)
-            if (!this.routeParsers.has(path)) {
-                this.routeParsers.set(path, new RouteParser(path));
-            }
-            const parser = this.routeParsers.get(path);
-            const match = parser.match(this.url.pathname);
-            if (match.matched) {
-                // Injeta params no req (plural - mais intuitivo)
-                this.req.params = match.params;
-                // Mantém param para backward compatibility
-                this.req.param = match.params;
+        // Rota sem parâmetros: comparação direta ou decodificada segmento a segmento
+        if (!path.includes(':')) {
+            if (matchStaticPath(this.url.pathname, path)) {
+                this.req.params = undefined;
+                this.req.param = undefined;
                 return true;
             }
+            return false;
+        }
+        // Rota com parâmetros (ou ':' literal) - usa RouteParser
+        if (!this.routeParsers.has(path)) {
+            this.routeParsers.set(path, new RouteParser(path));
+        }
+        const parser = this.routeParsers.get(path);
+        const match = parser.match(this.url.pathname);
+        if (match.matched) {
+            // Injeta params no req (plural - mais intuitivo)
+            this.req.params = match.params;
+            // Mantém param para backward compatibility
+            this.req.param = match.params;
+            return true;
         }
         return false;
     }
@@ -797,11 +946,14 @@ class RouterWorkers {
                 // Se o error handler falhar, usar resposta padrão
                 this.res.send({ error: 'Internal Server Error' }, { status: 500 });
             }
+            if (!this.response) {
+                this.res.send({ error: 'Internal Server Error' }, { status: 500 });
+            }
         }
         else {
             // Handler padrão
-            const statusCode = error.statusCode || 500;
-            const message = error.message || 'Internal Server Error';
+            const statusCode = error?.statusCode || 500;
+            const message = error?.message || 'Internal Server Error';
             this.res.send({ error: message }, { status: statusCode });
         }
     }
@@ -825,7 +977,7 @@ class RouterWorkers {
     async removeCache(pathname) {
         if (this.config?.cache?.pathname &&
             this.config.cache.pathname.length > 0 &&
-            this.config.cache.pathname.includes(pathname)) {
+            this.config.cache.pathname.some((entry) => entry === pathname || entry.split(',')[0] === pathname)) {
             const cacheUrl = this.config?.cache?.version
                 ? `${this.req.url}?v=${this.config.cache.version}`
                 : this.req.url;
@@ -840,23 +992,43 @@ class RouterWorkers {
      */
     resolve() {
         if (!this.response) {
-            // Verifica se alguma rota corresponde ao pathname
-            const matched = this.incrementRoute.some((pathname) => this.isPathName(pathname));
-            if (!matched) {
-                // Usa handler customizado ou padrão para 404
-                if (this.notFoundHandler) {
-                    try {
-                        this.notFoundHandler(this.req, this.res);
-                    }
-                    catch {
-                        // Fallback se o handler falhar
-                        this.res.send({ error: 'Not Found', path: this.url.pathname }, { status: 404 });
-                    }
+            // Usa handler customizado ou padrão para 404
+            if (this.notFoundHandler) {
+                try {
+                    this.notFoundHandler(this.req, this.res);
                 }
-                else {
-                    // Handler padrão de 404
+                catch {
+                    // Fallback se o handler falhar
                     this.res.send({ error: 'Not Found', path: this.url.pathname }, { status: 404 });
                 }
+            }
+            if (!this.response) {
+                // Handler padrão de 404 (ou fallback se notFoundHandler não enviou resposta)
+                this.res.send({ error: 'Not Found', path: this.url.pathname }, { status: 404 });
+            }
+        }
+        const corsHeaders = this.req.__corsHeaders;
+        if (corsHeaders && this.response) {
+            try {
+                for (const [key, value] of Object.entries(corsHeaders)) {
+                    if (!this.response.headers.has(key)) {
+                        this.response.headers.set(key, value);
+                    }
+                }
+            }
+            catch {
+                // Caso os headers da Response sejam imutáveis (ex: Response.redirect), clona com headers mutáveis
+                const clonedHeaders = new Headers(this.response.headers);
+                for (const [key, value] of Object.entries(corsHeaders)) {
+                    if (!clonedHeaders.has(key)) {
+                        clonedHeaders.set(key, value);
+                    }
+                }
+                this.response = new Response(this.response.body, {
+                    status: this.response.status,
+                    statusText: this.response.statusText,
+                    headers: clonedHeaders,
+                });
             }
         }
         return this.response;

@@ -45,7 +45,11 @@ export type Middleware = (req: Req, res: Res) => Promise<void> | void;
 /**
  * Argumentos de métodos de rota (path, middlewares opcionais, handler)
  */
-export type Args = [pathname: string, ...middlewares: Middleware[], callback: RouteHandler];
+export type Args = [
+    pathname: string,
+    ...middlewares: Middleware[],
+    callback: RouteHandler
+];
 /**
  * Handler de erro global
  */
@@ -55,9 +59,14 @@ export type ErrorHandler = (error: Error, req: Req, res: Res) => Promise<void> |
  */
 export type NotFoundHandler = (req: Req, res: Res) => Promise<void> | void;
 /**
+ * Tipo padrão de resposta para res.send quando recebe string
+ */
+export type DefaultResponseType = 'json' | 'text';
+/**
  * Configuração do RouterWorkers
  */
 export type ConfigWorker = {
+    defaultResponseType?: DefaultResponseType;
     cache?: {
         pathname: string[];
         maxage: string;

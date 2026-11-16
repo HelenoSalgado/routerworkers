@@ -53,8 +53,11 @@ export class RouteGroup {
     const prefix = this.getFullPrefix();
     if (!prefix) return path;
 
-    // Remove trailing slash do prefix e leading slash do path
-    const cleanPrefix = prefix.replace(/\/$/, '');
+    // Remove trailing slash do prefix e normaliza barra inicial do path
+    const cleanPrefix = prefix.replace(/\/+$/, '');
+    if (!path || path === '/') {
+      return cleanPrefix || '/';
+    }
     const cleanPath = path.startsWith('/') ? path : `/${path}`;
 
     return `${cleanPrefix}${cleanPath}`;
@@ -115,7 +118,9 @@ export class RouteGroup {
     config: RouteGroupConfig,
     callback: (group: RouteGroup) => Promise<void>,
   ): Promise<void> {
-    const nestedPrefix = this.getFullPrefix() + (config.prefix || '');
+    const nestedPrefix = config.prefix
+      ? this.prefixPath(config.prefix)
+      : this.getFullPrefix();
     const nestedMiddlewares = [
       ...(this.config.middlewares || []),
       ...(config.middlewares || []),

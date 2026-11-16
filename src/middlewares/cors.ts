@@ -79,7 +79,7 @@ export function cors(options: CorsOptions = {}): Middleware {
     const requestOrigin = req.headers.get('Origin') || '';
 
     // Determinar se a origin é permitida
-    let allowOrigin = '*';
+    let allowOrigin = '';
 
     if (typeof origin === 'string') {
       allowOrigin = origin;
@@ -95,12 +95,14 @@ export function cors(options: CorsOptions = {}): Middleware {
 
     // Se a requisição é OPTIONS (preflight), responder diretamente
     if (req.method === 'OPTIONS') {
-      const headers = {
-        'Access-Control-Allow-Origin': allowOrigin,
+      const headers: Record<string, string> = {
+        ...(allowOrigin ? { 'Access-Control-Allow-Origin': allowOrigin } : {}),
         'Access-Control-Allow-Methods': methods.join(', '),
         'Access-Control-Allow-Headers': allowedHeaders.join(', '),
         'Access-Control-Max-Age': String(maxAge),
-        ...(credentials ? { 'Access-control-Allow-Credentials': 'true' } : {}),
+        ...(credentials && allowOrigin
+          ? { 'Access-Control-Allow-Credentials': 'true' }
+          : {}),
       };
 
       // Responder ao preflight com 204 No Content e os headers corretos
@@ -111,9 +113,11 @@ export function cors(options: CorsOptions = {}): Middleware {
     // Para outras requisições, adicionar headers CORS à resposta
     // Guardamos as configs para aplicar depois quando a response for criada
     (req as any).__corsHeaders = {
-      'Access-Control-Allow-Origin': allowOrigin,
-      ...(credentials ? { 'Access-Control-Allow-Credentials': 'true' } : {}),
-      ...(exposedHeaders.length > 0
+      ...(allowOrigin ? { 'Access-Control-Allow-Origin': allowOrigin } : {}),
+      ...(credentials && allowOrigin
+        ? { 'Access-Control-Allow-Credentials': 'true' }
+        : {}),
+      ...(exposedHeaders.length > 0 && allowOrigin
         ? { 'Access-Control-Expose-Headers': exposedHeaders.join(', ') }
         : {}),
     };

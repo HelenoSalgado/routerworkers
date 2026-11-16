@@ -10,7 +10,7 @@ import {
   RouteHandler,
 } from '../types/index';
 import { getQueryInPathName } from './utils/getQueries';
-import { RouteParser } from './utils/routeParser';
+import { RouteParser, matchStaticPath } from './utils/routeParser';
 
 // Exportar validador built-in
 export { validate, schemas, ValidationError } from './utils/validator';
@@ -27,6 +27,7 @@ export type { CorsOptions } from './middlewares/cors';
 // Exportar Route Groups
 export { group, RouteGroup } from './utils/routeGroup';
 export type { RouteGroupConfig } from './utils/routeGroup';
+export type { DefaultResponseType } from '../types/index';
 
 declare const caches: Caches;
 
@@ -46,6 +47,13 @@ export class RouterWorkers {
     send: (data: any, config?: ResponseInit) => {
       if (data !== null && typeof data == 'object') {
         this.response = Response.json(data, config);
+      } else if (
+        typeof data === 'string' &&
+        this.config?.defaultResponseType === 'json'
+      ) {
+        const status = config?.status ?? 200;
+        const payload = status >= 400 ? { error: data } : { message: data };
+        this.response = Response.json(payload, config);
       } else {
         this.response = new Response(data, config);
       }
@@ -171,6 +179,7 @@ export class RouterWorkers {
     this.method = request.method;
     this.config = config;
     this.req = new Request(request) as Req;
+    this.req.queries = getQueryInPathName(this.url.search);
   }
 
   /**
@@ -287,28 +296,30 @@ export class RouterWorkers {
    * Suporta rotas aninhadas: /api/users/:userId/posts/:postId
    */
   isPathName(path: string): boolean {
-    // Rota exata (sem parâmetros)
-    if (this.url.pathname === path) {
-      return true;
-    }
-
-    // Rota com parâmetros - usa RouteParser
-    if (path.includes(':')) {
-      // Reutiliza parser se já existe (performance)
-      if (!this.routeParsers.has(path)) {
-        this.routeParsers.set(path, new RouteParser(path));
-      }
-
-      const parser = this.routeParsers.get(path)!;
-      const match = parser.match(this.url.pathname);
-
-      if (match.matched) {
-        // Injeta params no req (plural - mais intuitivo)
-        this.req.params = match.params;
-        // Mantém param para backward compatibility
-        this.req.param = match.params;
+    // Rota sem parâmetros: comparação direta ou decodificada segmento a segmento
+    if (!path.includes(':')) {
+      if (matchStaticPath(this.url.pathname, path)) {
+        this.req.params = undefined;
+        this.req.param = undefined;
         return true;
       }
+      return false;
+    }
+
+    // Rota com parâmetros (ou ':' literal) - usa RouteParser
+    if (!this.routeParsers.has(path)) {
+      this.routeParsers.set(path, new RouteParser(path));
+    }
+
+    const parser = this.routeParsers.get(path)!;
+    const match = parser.match(this.url.pathname);
+
+    if (match.matched) {
+      // Injeta params no req (plural - mais intuitivo)
+      this.req.params = match.params;
+      // Mantém param para backward compatibility
+      this.req.param = match.params;
+      return true;
     }
 
     return false;
@@ -353,10 +364,13 @@ export class RouterWorkers {
         // Se o error handler falhar, usar resposta padrão
         this.res.send({ error: 'Internal Server Error' }, { status: 500 });
       }
+      if (!this.response) {
+        this.res.send({ error: 'Internal Server Error' }, { status: 500 });
+      }
     } else {
       // Handler padrão
-      const statusCode = error.statusCode || 500;
-      const message = error.message || 'Internal Server Error';
+      const statusCode = error?.statusCode || 500;
+      const message = error?.message || 'Internal Server Error';
 
       this.res.send({ error: message }, { status: statusCode });
     }
@@ -389,7 +403,9 @@ export class RouterWorkers {
     if (
       this.config?.cache?.pathname &&
       this.config.cache.pathname.length > 0 &&
-      this.config.cache.pathname.includes(pathname)
+      this.config.cache.pathname.some(
+        (entry) => entry === pathname || entry.split(',')[0] === pathname,
+      )
     ) {
       const cacheUrl = this.config?.cache?.version
         ? `${this.req.url}?v=${this.config.cache.version}`
@@ -406,30 +422,51 @@ export class RouterWorkers {
    */
   resolve(): Response {
     if (!this.response) {
-      // Verifica se alguma rota corresponde ao pathname
-      const matched = this.incrementRoute.some((pathname) =>
-        this.isPathName(pathname),
-      );
-
-      if (!matched) {
-        // Usa handler customizado ou padrão para 404
-        if (this.notFoundHandler) {
-          try {
-            this.notFoundHandler(this.req, this.res);
-          } catch {
-            // Fallback se o handler falhar
-            this.res.send(
-              { error: 'Not Found', path: this.url.pathname },
-              { status: 404 },
-            );
-          }
-        } else {
-          // Handler padrão de 404
+      // Usa handler customizado ou padrão para 404
+      if (this.notFoundHandler) {
+        try {
+          this.notFoundHandler(this.req, this.res);
+        } catch {
+          // Fallback se o handler falhar
           this.res.send(
             { error: 'Not Found', path: this.url.pathname },
             { status: 404 },
           );
         }
+      }
+
+      if (!this.response) {
+        // Handler padrão de 404 (ou fallback se notFoundHandler não enviou resposta)
+        this.res.send(
+          { error: 'Not Found', path: this.url.pathname },
+          { status: 404 },
+        );
+      }
+    }
+
+    const corsHeaders = (this.req as any).__corsHeaders as
+      | Record<string, string>
+      | undefined;
+    if (corsHeaders && this.response) {
+      try {
+        for (const [key, value] of Object.entries(corsHeaders)) {
+          if (!this.response.headers.has(key)) {
+            this.response.headers.set(key, value);
+          }
+        }
+      } catch {
+        // Caso os headers da Response sejam imutáveis (ex: Response.redirect), clona com headers mutáveis
+        const clonedHeaders = new Headers(this.response.headers);
+        for (const [key, value] of Object.entries(corsHeaders)) {
+          if (!clonedHeaders.has(key)) {
+            clonedHeaders.set(key, value);
+          }
+        }
+        this.response = new Response(this.response.body, {
+          status: this.response.status,
+          statusText: this.response.statusText,
+          headers: clonedHeaders,
+        });
       }
     }
 
